@@ -39,6 +39,13 @@ squareHeight = int(VIDEO_FEED_SIZE[1] / numLedsVert)
 startX = int((VIDEO_FEED_SIZE[0]/2.0)-(numLedsHoriz*squareWidth*0.5))
 startY = int((VIDEO_FEED_SIZE[1]/2.0)-(numLedsVert*squareHeight*0.5))
 
+globalIsPi = False
+
+try:
+    import picamera as pc
+    from picamera.array import PiRGBArray
+    globalIsPi = True
+
 class FadecandyOffset:
     fcOffset = 0
     count = 0
@@ -83,13 +90,7 @@ class Ambilight:
     stopped = False
     fps = None
 
-    isPi = False
-    try:
-        import picamera as pc
-        from picamera.array import PiRGBArray
-        isPi = True
-    except ImportError:
-        isPi = False
+    isPi = globalIsPi
 
     #METHODS
 
