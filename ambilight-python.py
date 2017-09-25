@@ -11,10 +11,10 @@ import timeit
 # and now the most important of all
 import cv2
 
-VIDEO_FEED_SIZE = [720, 408] #[width, height] in pixels
+VIDEO_FEED_SIZE = [640, 360] #[width, height] in pixels
 FRAMERATE = 15
 
-BLUR_AMT = 19
+BLUR_AMT = 15
 
 #amount to go "inwards" multiplied by current rectangle width or height
 RECTANGLE_SPREAD_MULTIPLIER = 4
@@ -181,10 +181,9 @@ class Ambilight:
         blur = cv2.blur(frame, (BLUR_AMT, BLUR_AMT), (-1, -1))
         blurTime = timeit.default_timer() - frameStartTime
 
-        #leds = np.fmax(
-        #        np.subtract(self.leds,FADE_AMT_PER_FRAME), 
-        #0);
-        leds = self.leds
+        leds = np.fmax(
+                np.subtract(self.leds,FADE_AMT_PER_FRAME), 
+        0);
         
         ledsTop = ([[0,0,0]] * LEDPosition.TOP.count)
         ledsRight = ([[0,0,0]] * LEDPosition.RIGHT.count)
@@ -308,6 +307,7 @@ class Ambilight:
             if key == ord("q"):
                 self.stopped = True
 
+        self.leds = leds
         self.sendLEDs(leds.tolist())
 
 Ambilight()
