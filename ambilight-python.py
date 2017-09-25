@@ -1,6 +1,5 @@
 from enum import Enum
 from threading import Thread
-from imutils.video import FPS
 import datetime
 import time
 import imutils
@@ -173,23 +172,23 @@ class Ambilight:
                 frame = f.array
                 self.processFrame(frame)
                 self.piCapture.truncate(0)
-                self.fps.update()
 
                 if self.stopped:
                     self.closeGently(True)
                     return
 
     def processFrame(self, frame):
+        frameStartTime = timeit.default_timer()
+
+        blur = cv2.blur(frame, (BLUR_AMT, BLUR_AMT), (-1, -1))
+        blurTime = timeit.default_timer() - frameStartTime
+
         leds = np.fmin(np.fmax(np.subtract(self.leds,FADE_AMT_PER_FRAME), 0), 255);
 
         # resize frame
         frame = imutils.resize(frame, 
             width=VIDEO_FEED_SIZE[0]
         )
-
-        startTime = timeit.default_timer()
-        blur = cv2.blur(frame, (BLUR_AMT, BLUR_AMT), (-1, -1))
-        blurTime = timeit.default_timer() - startTime
         
         ledsTop = ([[0,0,0]] * LEDPosition.TOP.count)
         ledsRight = ([[0,0,0]] * LEDPosition.RIGHT.count)
@@ -288,9 +287,9 @@ class Ambilight:
                 cv2.FONT_HERSHEY_PLAIN, 0.5, (255,100,100), 1
             )
 
-            if (SHOW_FPS and False):
-                fps = self.fps.elapsed()
-                cv2.putText(frame, "FPS: "+str(fps), 
+            if (SHOW_FPS):
+                frameTime = timeit.default_timer() - frameStartTime
+                cv2.putText(frame, "Frame time: "+str(frameTime), 
                     (
                         (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
                         (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+35
@@ -314,6 +313,5 @@ class Ambilight:
                 self.stopped = True
 
         self.sendLEDs(leds.tolist())
-
 
 Ambilight()
