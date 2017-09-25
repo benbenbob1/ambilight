@@ -45,6 +45,8 @@ try:
     import picamera as pc
     from picamera.array import PiRGBArray
     globalIsPi = True
+except ImportError:
+    continue
 
 class FadecandyOffset:
     fcOffset = 0
