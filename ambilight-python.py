@@ -1,4 +1,6 @@
 from enum import Enum
+from threading import Thread
+from imutils.video import FPS
 import datetime
 import time
 import imutils
@@ -11,7 +13,7 @@ import timeit
 import cv2
 
 VIDEO_FEED_SIZE = [720, 405] #[width, height] in pixels
-FPS = 10
+FRAMERATE = 15
 
 BLUR_AMT = 19
 
@@ -30,22 +32,6 @@ numLedsTotal = (numLedsVert * 2) + (numLedsHoriz * 2)
 
 FADECANDY_NUM_STRIPS = 3
 FADECANDY_MAX_LEDSPEROUT = 64
-
-ledController = opc.Client('127.0.0.1:7890')
-if ledController.can_connect():
-    print('Connected to LED OPC')
-
-camera = None
-piCapture = None
-useDisplay = True
-
-isPi = False
-try:
-    import picamera as pc
-    from picamera.array import PiRGBArray
-    isPi = True
-except ImportError:
-    isPi = False
 
 squareWidth = int(VIDEO_FEED_SIZE[0] / numLedsHoriz)
 squareHeight = int(VIDEO_FEED_SIZE[1] / numLedsVert)
@@ -68,7 +54,7 @@ class FadecandyOffset:
         if (len(leds) < self.count or 
             len(leds) < startIdx + self.count or 
             len(ledColors) < self.count):
-            print "ERROR: Can't write to LED "+str(startIdx)
+            print("ERROR: Can't write to LED "+str(startIdx))
             return
         leds[startIdx:startIdx+self.count] = ledColors
 
@@ -84,85 +70,124 @@ class LEDPosition:
     BOTTOM = FadecandyOffset(1, 0, 52, False)
     LEFT = FadecandyOffset(2, 0, 28, False)
 
-#METHODS
+class Ambilight:
 
-leds = None
+    ledController = opc.Client('127.0.0.1:7890')
+    if ledController.can_connect():
+        print('Connected to LED OPC')
 
-#[[r,g,b], [r,g,b], ...]
-def sendLEDs(arr):
-    normalized = np.fmin(np.fmax(arr, 0), 255)
-    global ledController
-    if ledController is not None:
-        ledController.put_pixels(normalized, channel=0)
+    camera = None
+    piCapture = None
+    useDisplay = True
+    stream = None
+    stopped = False
+    fps = None
 
-# returns (r, g, b)
-def getAvgColorForFrame(frame, topLeftPoint, bottomRightPoint):
-    box = frame[
-        topLeftPoint[1]:bottomRightPoint[1],
-        topLeftPoint[0]:bottomRightPoint[0]
-    ]
-    boxColor = np.nanmean(
-        np.nanmean(box, axis=0),
-    axis=0)
-    return boxColor
+    isPi = False
+    try:
+        import picamera as pc
+        from picamera.array import PiRGBArray
+        isPi = True
+    except ImportError:
+        isPi = False
 
-def doLoop(isPi):
-    global leds
-
-    blurKernel = cv2.getStructuringElement(cv2.MORPH_RECT,(10,15))
+    #METHODS
 
     leds = np.uint8([[0,0,0]] * 64*3)
 
-    # Returns: 
-    #   bool: should continue loop
-    def processFrame(frame):
-        global leds
+    #[[r,g,b], [r,g,b], ...]
+    def sendLEDs(self, arr):
+        normalized = np.fmin(np.fmax(arr, 0), 255)
+        if self.ledController is not None:
+            self.ledController.put_pixels(normalized, channel=0)
 
-        leds = np.fmin(np.fmax(np.subtract(leds,FADE_AMT_PER_FRAME), 0), 255);
+    # returns (r, g, b)
+    def getAvgColorForFrame(self, frame, topLeftPoint, bottomRightPoint):
+        box = frame[
+            topLeftPoint[1]:bottomRightPoint[1],
+            topLeftPoint[0]:bottomRightPoint[0]
+        ]
+        boxColor = np.nanmean(
+            np.nanmean(box, axis=0),
+        axis=0)
+        return boxColor
+
+    def closeGently(self, isPi):
+        if (not isPi):
+            self.camera.release()
+        else:
+            self.stream.close()
+
+        print("Video feed closed")
+        cv2.destroyAllWindows()
+
+    def __init__(self):
+        self.start()
+
+    def start(self):
+        print("Starting up")
+        self.fps = FPS().start()
+        self.stopped = False
+        if (self.isPi):
+            print("Using Pi's PiCamera")
+            self.camera = pc.PiCamera()
+            self.camera.resolution = tuple(VIDEO_FEED_SIZE)
+            self.camera.framerate = FRAMERATE
+            self.piCapture = PiRGBArray(self.camera, size=tuple(VIDEO_FEED_SIZE))
+            self.stream = self.camera.capture_continuous(
+                self.piCapture, 
+                format="bgr",
+                use_video_port=True)
+            time.sleep(2.0)
+            print("Pi video feed opened")
+            Thread(target=self.update, args=(True,)).start()
+        else:
+            print("Using CV2's VideoCapture")
+            # get video feed from default camera device
+            self.camera = cv2.VideoCapture(0)
+            while (True):
+                if not self.camera.isOpened():
+                    time.sleep(2)
+                else:
+                    break
+            print("CV2 video feed opened")
+            while (True):
+                response, frame = self.camera.read()
+                if not response:
+                    print("Error: CV2 could not obtain frame")
+                    # couldn't obtain a frame
+                    return
+                self.processFrame(frame)
+                self.update(False)
+
+                if self.stopped:
+                    self.closeGently(True)
+                    return
+
+    def update(self, isPi):
+        if (isPi):
+            for f in self.stream:
+                frame = f.array
+                self.processFrame(frame)
+                self.piCapture.truncate(0)
+                self.fps.update()
+
+                if self.stopped:
+                    self.closeGently(True)
+                    return
+
+    def processFrame(self, frame):
+        leds = np.fmin(np.fmax(np.subtract(self.leds,FADE_AMT_PER_FRAME), 0), 255);
 
         # resize frame
         frame = imutils.resize(frame, 
             width=VIDEO_FEED_SIZE[0]
         )
 
-        dateTimeStr = datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p")
-        
-        cv2.putText(frame, dateTimeStr, 
-            (
-                (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
-                (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+10
-            ),
-            cv2.FONT_HERSHEY_PLAIN, 0.5, (255,100,100), 1
-        )
-        cv2.putText(frame, "Press q to quit", 
-            (
-                (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
-                (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+20
-            ),
-            cv2.FONT_HERSHEY_PLAIN, 0.5, (255,100,100), 1
-        )
-
-        if (SHOW_FPS):
-            fps = camera.get(cv2.CAP_PROP_FPS)
-            cv2.putText(frame, "FPS: "+str(fps), 
-                (
-                    (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
-                    (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+35
-                ),
-                cv2.FONT_HERSHEY_PLAIN, 0.75, (255,100,50), 1
-            )
-
         startTime = timeit.default_timer()
         blur = cv2.blur(frame, (BLUR_AMT, BLUR_AMT), (-1, -1))
-        elapsed = timeit.default_timer() - startTime
-        cv2.putText(frame, "Blur time: "+str(elapsed), 
-            (
-                (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
-                (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+45
-            ),
-            cv2.FONT_HERSHEY_PLAIN, 0.75, (255,100,100), 1
-        )
-
+        blurTime = timeit.default_timer() - startTime
+        
         ledsTop = ([[0,0,0]] * LEDPosition.TOP.count)
         ledsRight = ([[0,0,0]] * LEDPosition.RIGHT.count)
         ledsBottom = ([[0,0,0]] * LEDPosition.BOTTOM.count)
@@ -174,7 +199,7 @@ def doLoop(isPi):
                 startX + ((s+1)*squareWidth),
                 squareHeight*RECTANGLE_SPREAD_MULTIPLIER
             )
-            avgCol = getAvgColorForFrame(blur, pointTL, pointBR)
+            avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
             ledsTop[s] = avgCol
             cv2.rectangle(
                 frame, 
@@ -192,7 +217,7 @@ def doLoop(isPi):
                 startX + ((s+1)*squareWidth),
                 VIDEO_FEED_SIZE[1]
             )
-            avgCol = getAvgColorForFrame(blur, pointTL, pointBR)
+            avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
             ledsBottom[s] = avgCol
             cv2.rectangle(
                 frame, 
@@ -210,7 +235,7 @@ def doLoop(isPi):
                 squareWidth*RECTANGLE_SPREAD_MULTIPLIER,
                 startY + ((s+1)*squareHeight)
             )
-            avgCol = getAvgColorForFrame(blur, pointTL, pointBR)
+            avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
             ledsLeft[s] = avgCol
             cv2.rectangle(
                 frame, 
@@ -228,7 +253,7 @@ def doLoop(isPi):
                 VIDEO_FEED_SIZE[0],
                 startY + ((s+1)*squareHeight)
             )
-            avgCol = getAvgColorForFrame(blur, pointTL, pointBR)
+            avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
             ledsRight[s] = avgCol
             cv2.rectangle(
                 frame, 
@@ -243,7 +268,39 @@ def doLoop(isPi):
         LEDPosition.BOTTOM.putLEDs(leds, ledsBottom)
         LEDPosition.LEFT.putLEDs(leds, ledsLeft)
 
-        if useDisplay:
+        if self.useDisplay:
+            dateTimeStr = datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p")
+            cv2.putText(frame, str(dateTimeStr), 
+                (
+                    (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
+                    (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+10
+                ),
+                cv2.FONT_HERSHEY_PLAIN, 0.5, (255,100,100), 1
+            )
+            cv2.putText(frame, "Press q to quit", 
+                (
+                    (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
+                    (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+20
+                ),
+                cv2.FONT_HERSHEY_PLAIN, 0.5, (255,100,100), 1
+            )
+
+            if (SHOW_FPS and False):
+                fps = self.fps.elapsed()
+                cv2.putText(frame, "FPS: "+str(fps), 
+                    (
+                        (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
+                        (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+35
+                    ),
+                    cv2.FONT_HERSHEY_PLAIN, 0.75, (255,100,50), 1
+                )
+            cv2.putText(frame, "Blur time: "+str(blurTime), 
+                (
+                    (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
+                    (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+45
+                ),
+                cv2.FONT_HERSHEY_PLAIN, 0.75, (255,100,100), 1
+            )
 
             cv2.imshow("Feed", frame)
             #cv2.imshow("BBLUR", blur)    
@@ -251,64 +308,9 @@ def doLoop(isPi):
             # exit on 'q' key press
             key = cv2.waitKey(1) & 0xFF
             if key == ord("q"):
-                return False
+                self.stopped = True
 
-        sendLEDs(leds.tolist())
-
-        return True
-
-    if (isPi):
-        print "Using Pi's PiCamera"
-        camera = pc.PiCamera()
-        camera.resolution = tuple(VIDEO_FEED_SIZE)
-        camera.framerate = FPS
-        piCapture = PiRGBArray(camera, size=tuple(VIDEO_FEED_SIZE))
-        time.sleep(2.5)
-        print("Pi video feed opened")
-        for f in camera.capture_continuous(
-            piCapture, 
-            format="bgr",
-            use_video_port=True):
-            frame = f.array
-            loop = processFrame(frame)
-            if (not loop):
-                piCapture.truncate(0)
-                break
-            piCapture.truncate(0)
-        closeGently(isPi, None)
-    else:
-        print "Using CV2's VideoCapture"
-        # get video feed from default camera device
-        camera = cv2.VideoCapture(0)
-        while (True):
-            if not camera.isOpened():
-                time.sleep(2)
-            else:
-                break
-        print("CV2 video feed opened")
-        while (True):
-            # get single frame
-            response, frame = camera.read()
-            if not response:
-                print("Error: could not obtain frame")
-                # couldn't obtain a frame
-                break
-            loop = processFrame(frame)
-            if (not loop):
-                break
-
-        closeGently(isPi, camera)
-
-def closeGently(isPi, camera):
-    if (not isPi):
-        camera.release()
-
-    print("Video feed closed")
-    cv2.destroyAllWindows()
-
-#ENDMETHODS
+        self.sendLEDs(leds.tolist())
 
 
-print("Attaching to camera...")
-
-doLoop(isPi)
+Ambilight()
