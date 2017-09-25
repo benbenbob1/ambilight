@@ -11,7 +11,7 @@ import timeit
 # and now the most important of all
 import cv2
 
-VIDEO_FEED_SIZE = [720, 405] #[width, height] in pixels
+VIDEO_FEED_SIZE = [720, 408] #[width, height] in pixels
 FRAMERATE = 15
 
 BLUR_AMT = 19
@@ -89,7 +89,6 @@ class Ambilight:
     useDisplay = True
     stream = None
     stopped = False
-    fps = None
 
     isPi = globalIsPi
 
@@ -128,7 +127,6 @@ class Ambilight:
 
     def start(self):
         print("Starting up")
-        self.fps = FPS().start()
         self.stopped = False
         if (self.isPi):
             print("Using Pi's PiCamera")
@@ -183,12 +181,10 @@ class Ambilight:
         blur = cv2.blur(frame, (BLUR_AMT, BLUR_AMT), (-1, -1))
         blurTime = timeit.default_timer() - frameStartTime
 
-        leds = np.fmin(np.fmax(np.subtract(self.leds,FADE_AMT_PER_FRAME), 0), 255);
-
-        # resize frame
-        frame = imutils.resize(frame, 
-            width=VIDEO_FEED_SIZE[0]
-        )
+        #leds = np.fmax(
+        #        np.subtract(self.leds,FADE_AMT_PER_FRAME), 
+        #0);
+        leds = self.leds
         
         ledsTop = ([[0,0,0]] * LEDPosition.TOP.count)
         ledsRight = ([[0,0,0]] * LEDPosition.RIGHT.count)
