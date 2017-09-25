@@ -1,3 +1,4 @@
+from enum import Enum
 import datetime
 import time
 import imutils
@@ -5,13 +6,14 @@ import warnings
 import numpy as np
 import opc
 import timeit
+
 # and now the most important of all
 import cv2
 
 VIDEO_FEED_SIZE = [720, 405] #[width, height] in pixels
-FPS = 15
+FPS = 10
 
-BLUR_AMT = 51
+BLUR_AMT = 19
 
 #amount to go "inwards" multiplied by current rectangle width or height
 RECTANGLE_SPREAD_MULTIPLIER = 4
@@ -21,9 +23,14 @@ FADE_AMT_PER_FRAME = 0.1 * 255 # amount to fade between every frame
 
 SHOW_FPS = True
 
-numLedsHoriz = 48
-numLedsVert = 27
+numLedsHoriz = 52
+numLedsVert = 28
+MAX_LEDS = max(numLedsHoriz, numLedsVert)
 numLedsTotal = (numLedsVert * 2) + (numLedsHoriz * 2)
+
+FADECANDY_NUM_STRIPS = 3
+FADECANDY_MAX_LEDSPEROUT = 64
+
 ledController = opc.Client('127.0.0.1:7890')
 if ledController.can_connect():
     print('Connected to LED OPC')
@@ -43,11 +50,41 @@ except ImportError:
 squareWidth = int(VIDEO_FEED_SIZE[0] / numLedsHoriz)
 squareHeight = int(VIDEO_FEED_SIZE[1] / numLedsVert)
 
+startX = int((VIDEO_FEED_SIZE[0]/2.0)-(numLedsHoriz*squareWidth*0.5))
+startY = int((VIDEO_FEED_SIZE[1]/2.0)-(numLedsVert*squareHeight*0.5))
+
+class FadecandyOffset:
+    fcOffset = 0
+    count = 0
+    startIndex = 0
+    inverted = False
+    def __init__(self, fadecandyIndex, startIndex, numLeds, isInverted):
+        self.fcOffset = fadecandyIndex
+        self.startIndex = startIndex
+        self.count = numLeds
+        self.inverted = isInverted
+    def putLEDs(self, leds, ledColors):
+        startIdx = (self.fcOffset*FADECANDY_MAX_LEDSPEROUT)+self.startIndex
+        if (len(leds) < self.count or 
+            len(leds) < startIdx + self.count or 
+            len(ledColors) < self.count):
+            print "ERROR: Can't write to LED "+str(startIdx)
+            return
+        leds[startIdx:startIdx+self.count] = ledColors
+
+# Strip: Fadecandy Offset, led start - led end
+# Top:      0, 0 - 51
+# Bottom:   1, 0 - 51
+# Left:     2, 0 - 27
+# Right:    2, 28- 55
+
+class LEDPosition:
+    TOP = FadecandyOffset(0, 0, 52, False)
+    RIGHT = FadecandyOffset(2, 28, 28, False)
+    BOTTOM = FadecandyOffset(1, 0, 52, False)
+    LEFT = FadecandyOffset(2, 0, 28, False)
+
 #METHODS
-
-#warnings.simplefilter("ignore")
-
-numLeds = 0
 
 leds = None
 
@@ -74,7 +111,7 @@ def doLoop(isPi):
 
     blurKernel = cv2.getStructuringElement(cv2.MORPH_RECT,(10,15))
 
-    leds = np.uint8([[0,0,0]] * numLedsTotal)
+    leds = np.uint8([[0,0,0]] * 64*3)
 
     # Returns: 
     #   bool: should continue loop
@@ -90,97 +127,126 @@ def doLoop(isPi):
 
         dateTimeStr = datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p")
         
-        # putText(frame,text,origin,font_face,font_scale,color,thickness)
-        #cv2.putText(frame, text, (10, 20), cv2.FONT_HERSHEY_PLAIN, 
-        #    0.5, (255,0,0), 1)
         cv2.putText(frame, dateTimeStr, 
             (
                 (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
                 (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+10
             ),
-            cv2.FONT_HERSHEY_PLAIN, 0.5, (255,255,255), 1
+            cv2.FONT_HERSHEY_PLAIN, 0.5, (255,100,100), 1
         )
         cv2.putText(frame, "Press q to quit", 
             (
                 (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
                 (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+20
             ),
-            cv2.FONT_HERSHEY_PLAIN, 0.5, (255,255,255), 1
+            cv2.FONT_HERSHEY_PLAIN, 0.5, (255,100,100), 1
         )
 
+        if (SHOW_FPS):
+            fps = camera.get(cv2.CAP_PROP_FPS)
+            cv2.putText(frame, "FPS: "+str(fps), 
+                (
+                    (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
+                    (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+35
+                ),
+                cv2.FONT_HERSHEY_PLAIN, 0.75, (255,100,50), 1
+            )
 
         startTime = timeit.default_timer()
         blur = cv2.blur(frame, (BLUR_AMT, BLUR_AMT), (-1, -1))
         elapsed = timeit.default_timer() - startTime
-        cv2.putText(blur, "Blur time: "+str(elapsed), 
+        cv2.putText(frame, "Blur time: "+str(elapsed), 
             (
                 (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
-                (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+10
+                (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+45
             ),
             cv2.FONT_HERSHEY_PLAIN, 0.75, (255,100,100), 1
         )
 
+        ledsTop = ([[0,0,0]] * LEDPosition.TOP.count)
+        ledsRight = ([[0,0,0]] * LEDPosition.RIGHT.count)
+        ledsBottom = ([[0,0,0]] * LEDPosition.BOTTOM.count)
+        ledsLeft = ([[0,0,0]] * LEDPosition.LEFT.count)
+
+        for s in range(0, numLedsHoriz):
+            pointTL = (startX + (s*squareWidth), 0)
+            pointBR = (
+                startX + ((s+1)*squareWidth),
+                squareHeight*RECTANGLE_SPREAD_MULTIPLIER
+            )
+            avgCol = getAvgColorForFrame(blur, pointTL, pointBR)
+            ledsTop[s] = avgCol
+            cv2.rectangle(
+                frame, 
+                pointTL,    #top left vertex
+                pointBR,    #bottom right vertex
+                avgCol,
+                -1          #thickness, negative means filled
+            )
+            pointTL = (
+                startX + (s*squareWidth),
+                VIDEO_FEED_SIZE[1] -
+                    (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)
+            )
+            pointBR = (
+                startX + ((s+1)*squareWidth),
+                VIDEO_FEED_SIZE[1]
+            )
+            avgCol = getAvgColorForFrame(blur, pointTL, pointBR)
+            ledsBottom[s] = avgCol
+            cv2.rectangle(
+                frame, 
+                pointTL,
+                pointBR,
+                avgCol,
+                -1
+            )
+        for s in range(1, numLedsVert-1):
+            pointTL = (
+                0, 
+                startY + (s*squareHeight)
+            )
+            pointBR = (
+                squareWidth*RECTANGLE_SPREAD_MULTIPLIER,
+                startY + ((s+1)*squareHeight)
+            )
+            avgCol = getAvgColorForFrame(blur, pointTL, pointBR)
+            ledsLeft[s] = avgCol
+            cv2.rectangle(
+                frame, 
+                pointTL,    #top left vertex
+                pointBR,    #bottom right vertex
+                avgCol,
+                -1          #thickness, negative means filled
+            )
+            pointTL = (
+                VIDEO_FEED_SIZE[0] -
+                    (squareWidth*RECTANGLE_SPREAD_MULTIPLIER),
+                startY + (s*squareHeight)
+            )
+            pointBR = (
+                VIDEO_FEED_SIZE[0],
+                startY + ((s+1)*squareHeight)
+            )
+            avgCol = getAvgColorForFrame(blur, pointTL, pointBR)
+            ledsRight[s] = avgCol
+            cv2.rectangle(
+                frame, 
+                pointTL,
+                pointBR,
+                avgCol,
+                -1
+            )
+
+        LEDPosition.TOP.putLEDs(leds, ledsTop)
+        LEDPosition.RIGHT.putLEDs(leds, ledsRight)
+        LEDPosition.BOTTOM.putLEDs(leds, ledsBottom)
+        LEDPosition.LEFT.putLEDs(leds, ledsLeft)
+
         if useDisplay:
-            temp = blur
-            for s in range(0, numLedsHoriz):
-                pointTL = (s*squareWidth, 0)
-                pointBR = (
-                    (s+1)*squareWidth, 
-                    squareHeight*RECTANGLE_SPREAD_MULTIPLIER
-                )
-                avgCol = getAvgColorForFrame(temp, pointTL, pointBR)
-                cv2.rectangle(
-                    frame, 
-                    pointTL,    #top left vertex
-                    pointBR,    #bottom right vertex
-                    avgCol,
-                    -1          #thickness, negative means filled
-                )
-                pointTL = (
-                    s*squareWidth, 
-                    VIDEO_FEED_SIZE[1] -
-                        (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)
-                )
-                pointBR = ((s+1)*squareWidth, VIDEO_FEED_SIZE[1])
-                avgCol = getAvgColorForFrame(temp, pointTL, pointBR)
-                cv2.rectangle(
-                    frame, 
-                    pointTL,
-                    pointBR,
-                    avgCol,
-                    -1
-                )
-            for s in range(1, numLedsVert-1):
-                pointTL = (0, s*squareHeight)
-                pointBR = (
-                    squareWidth*RECTANGLE_SPREAD_MULTIPLIER,
-                    (s+1)*squareHeight
-                )
-                avgCol = getAvgColorForFrame(temp, pointTL, pointBR)
-                cv2.rectangle(
-                    frame, 
-                    pointTL,    #top left vertex
-                    pointBR,    #bottom right vertex
-                    avgCol,
-                    -1          #thickness, negative means filled
-                )
-                pointTL = (
-                    VIDEO_FEED_SIZE[0] -
-                        (squareWidth*RECTANGLE_SPREAD_MULTIPLIER),
-                    s*squareHeight
-                )
-                pointBR = (VIDEO_FEED_SIZE[0], (s+1)*squareHeight)
-                avgCol = getAvgColorForFrame(temp, pointTL, pointBR)
-                cv2.rectangle(
-                    frame, 
-                    pointTL,
-                    pointBR,
-                    avgCol,
-                    -1
-                )
 
             cv2.imshow("Feed", frame)
-            cv2.imshow("BBLUR", blur)    
+            #cv2.imshow("BBLUR", blur)    
 
             # exit on 'q' key press
             key = cv2.waitKey(1) & 0xFF
@@ -227,10 +293,6 @@ def doLoop(isPi):
                 print("Error: could not obtain frame")
                 # couldn't obtain a frame
                 break
-            if (SHOW_FPS):
-                fps = camera.get(cv2.CAP_PROP_FPS)
-                cv2.putText(frame, "FPS: "+str(fps), (100, 100),
-                    cv2.FONT_HERSHEY_PLAIN, 1, (255,100,50), 1)
             loop = processFrame(frame)
             if (not loop):
                 break
