@@ -64,7 +64,12 @@ class FadecandyOffset:
             len(ledColors) < self.count):
             print("ERROR: Can't write to LED "+str(startIdx))
             return
+        for l in range(1, len(ledColors)-1, 2):
+            ledColors[l] = np.array(
+                [ledColors[l-1], ledColors[l+1]]
+            ).mean(axis=0)
         leds[startIdx:startIdx+self.count] = ledColors
+        
 
 # Strip: Fadecandy Offset, led start - led end
 # Top:      0, 0 - 51
@@ -179,7 +184,7 @@ class Ambilight:
         ledsBottom = ([[0,0,0]] * LEDPosition.BOTTOM.count)
         ledsLeft = ([[0,0,0]] * LEDPosition.LEFT.count)
 
-        for s in range(0, numLedsHoriz):
+        for s in range(0, numLedsHoriz, 2):
             pointTL = (startX + (s*squareWidth), 0)
             pointBR = (
                 startX + ((s+1)*squareWidth),
@@ -212,7 +217,7 @@ class Ambilight:
                 avgCol,
                 -1
             )
-        for s in range(1, numLedsVert-1):
+        for s in range(1, numLedsVert-1, 2):
             pointTL = (
                 0, 
                 startY + (s*squareHeight)
