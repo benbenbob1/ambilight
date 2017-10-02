@@ -11,9 +11,9 @@ import timeit
 # and now the most important of all
 import cv2
 
-VIDEO_LOC = "crow.mov"
+VIDEO_LOC = "bob.mov"
 
-VIDEO_FEED_SIZE = [640, 360] #[width, height] in pixels
+VIDEO_FEED_SIZE = [640, 480] #[width, height] in pixels
 FRAMERATE = 15
 
 BLUR_AMT = 15
@@ -101,6 +101,7 @@ class Ambilight:
     #[[r,g,b], [r,g,b], ...]
     def sendLEDs(self, arr):
         normalized = np.fmin(np.fmax(arr, 0), 255)
+        print str(normalized[0]) + " - " + str(normalized[51])
         if self.ledController is not None:
             self.ledController.put_pixels(normalized, channel=0)
 
