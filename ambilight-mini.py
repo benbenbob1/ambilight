@@ -69,7 +69,6 @@ class FadecandyOffset:
                 [ledColors[l-1], ledColors[l+1]]
             ).mean(axis=0)
         leds[startIdx:startIdx+self.count] = ledColors
-        
 
 # Strip: Fadecandy Offset, led start - led end
 # Top:      0, 0 - 51
