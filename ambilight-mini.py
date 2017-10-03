@@ -12,7 +12,7 @@ import timeit
 import cv2
 
 VIDEO_FEED_SIZE = [112, 63] #[width, height] in pixels
-FRAMERATE = 15
+FRAMERATE = 10
 
 BLUR_AMT = 5
 
@@ -31,7 +31,7 @@ numLedsTotal = (numLedsVert * 2) + (numLedsHoriz * 2)
 
 FADECANDY_NUM_STRIPS = 3
 FADECANDY_MAX_LEDSPEROUT = 64
-LED_MIN_CUTOFF = 20 # out of 255
+LED_MIN_CUTOFF = 30 # out of 255
 
 squareWidth = int(VIDEO_FEED_SIZE[0] / numLedsHoriz)
 squareHeight = int(VIDEO_FEED_SIZE[1] / numLedsVert)
@@ -173,6 +173,7 @@ class Ambilight:
             except KeyboardInterrupt:
                 # Quit on "Ctrl-C"
                 self.stopped = True
+                break
 
     def processFrame(self, frame):
         frameStartTime = timeit.default_timer()
