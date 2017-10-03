@@ -303,9 +303,9 @@ class Ambilight:
             #cv2.imshow("BBLUR", blur)    
 
             # exit on 'q' key press
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord("q"):
-                self.stopped = True
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord("q"):
+            self.stopped = True
 
         self.leds = leds
         self.sendLEDs(leds.tolist())
