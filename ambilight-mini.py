@@ -31,7 +31,7 @@ numLedsTotal = (numLedsVert * 2) + (numLedsHoriz * 2)
 
 FADECANDY_NUM_STRIPS = 3
 FADECANDY_MAX_LEDSPEROUT = 64
-LED_MIN_CUTOFF = 10 # out of 255
+LED_MIN_CUTOFF = 20 # out of 255
 
 squareWidth = int(VIDEO_FEED_SIZE[0] / numLedsHoriz)
 squareHeight = int(VIDEO_FEED_SIZE[1] / numLedsVert)
@@ -123,56 +123,56 @@ class Ambilight:
         self.start()
 
     def start(self):
-        try:
-            print("Starting up")
-            self.stopped = False
-            if (self.isPi):
-                print("Using Pi's PiCamera")
-                self.camera = pc.PiCamera()
-                self.camera.resolution = tuple(VIDEO_FEED_SIZE)
-                self.camera.framerate = FRAMERATE
-                self.piCapture = PiRGBArray(self.camera, size=tuple(VIDEO_FEED_SIZE))
-                self.stream = self.camera.capture_continuous(
-                    self.piCapture, 
-                    format="bgr",
-                    use_video_port=True)
-                time.sleep(2.0)
-                print("Pi video feed opened")
-                Thread(target=self.update, args=(True,)).start()
-            else:
-                print("Using CV2's VideoCapture")
-                # get video feed from default camera device
-                self.camera = cv2.VideoCapture(0)
-                while (True):
-                    if not self.camera.isOpened():
-                        time.sleep(2)
-                    else:
-                        break
-                print("CV2 video feed opened")
-                while (True):
-                    response, frame = self.camera.read()
-                    if not response:
-                        print("Error: CV2 could not obtain frame")
-                        # couldn't obtain a frame
-                        return
-                    self.processFrame(frame)
+        print("Starting up")
+        self.stopped = False
+        if (self.isPi):
+            print("Using Pi's PiCamera")
+            self.camera = pc.PiCamera()
+            self.camera.resolution = tuple(VIDEO_FEED_SIZE)
+            self.camera.framerate = FRAMERATE
+            self.piCapture = PiRGBArray(self.camera, size=tuple(VIDEO_FEED_SIZE))
+            self.stream = self.camera.capture_continuous(
+                self.piCapture, 
+                format="bgr",
+                use_video_port=True)
+            time.sleep(2.0)
+            print("Pi video feed opened")
+            Thread(target=self.update, args=(True,)).start()
+        else:
+            print("Using CV2's VideoCapture")
+            # get video feed from default camera device
+            self.camera = cv2.VideoCapture(0)
+            while (True):
+                if not self.camera.isOpened():
+                    time.sleep(2)
+                else:
+                    break
+            print("CV2 video feed opened")
+            while (True):
+                response, frame = self.camera.read()
+                if not response:
+                    print("Error: CV2 could not obtain frame")
+                    # couldn't obtain a frame
+                    return
+                self.processFrame(frame)
 
-                    if self.stopped:
-                        self.closeGently(False)
-                        return
-        except KeyboardInterrupt:
-            # Quit on "Ctrl-C"
-            return
+                if self.stopped:
+                    self.closeGently(False)
+                    return
 
     def update(self, isPi):
         for f in self.stream:
-            frame = f.array
-            self.processFrame(frame)
-            self.piCapture.truncate(0)
+            try:
+                frame = f.array
+                self.processFrame(frame)
+                self.piCapture.truncate(0)
 
-            if self.stopped:
-                self.closeGently(True)
-                return
+                if self.stopped:
+                    self.closeGently(True)
+                    return
+            except KeyboardInterrupt:
+                # Quit on "Ctrl-C"
+                self.stopped = True
 
     def processFrame(self, frame):
         frameStartTime = timeit.default_timer()
