@@ -12,7 +12,7 @@ import timeit
 import cv2
 
 VIDEO_FEED_SIZE = [112, 63] #[width, height] in pixels
-FRAMERATE = 20
+FRAMERATE = 15
 
 BLUR_AMT = 5
 
@@ -31,6 +31,7 @@ numLedsTotal = (numLedsVert * 2) + (numLedsHoriz * 2)
 
 FADECANDY_NUM_STRIPS = 3
 FADECANDY_MAX_LEDSPEROUT = 64
+LED_MIN_CUTOFF = 10 # out of 255
 
 squareWidth = int(VIDEO_FEED_SIZE[0] / numLedsHoriz)
 squareHeight = int(VIDEO_FEED_SIZE[1] / numLedsVert)
@@ -102,7 +103,8 @@ class Ambilight:
 
     #[[r,g,b], [r,g,b], ...]
     def sendLEDs(self, arr):
-        normalized = np.fmin(np.fmax(arr, 0), 255)
+        normalized = np.fmin(arr, 255)
+        normalized[normalized < LED_MIN_CUTOFF] = 0
         if self.ledController is not None:
             self.ledController.put_pixels(normalized, channel=0)
 
@@ -121,42 +123,46 @@ class Ambilight:
         self.start()
 
     def start(self):
-        print("Starting up")
-        self.stopped = False
-        if (self.isPi):
-            print("Using Pi's PiCamera")
-            self.camera = pc.PiCamera()
-            self.camera.resolution = tuple(VIDEO_FEED_SIZE)
-            self.camera.framerate = FRAMERATE
-            self.piCapture = PiRGBArray(self.camera, size=tuple(VIDEO_FEED_SIZE))
-            self.stream = self.camera.capture_continuous(
-                self.piCapture, 
-                format="bgr",
-                use_video_port=True)
-            time.sleep(2.0)
-            print("Pi video feed opened")
-            Thread(target=self.update, args=(True,)).start()
-        else:
-            print("Using CV2's VideoCapture")
-            # get video feed from default camera device
-            self.camera = cv2.VideoCapture(0)
-            while (True):
-                if not self.camera.isOpened():
-                    time.sleep(2)
-                else:
-                    break
-            print("CV2 video feed opened")
-            while (True):
-                response, frame = self.camera.read()
-                if not response:
-                    print("Error: CV2 could not obtain frame")
-                    # couldn't obtain a frame
-                    return
-                self.processFrame(frame)
+        try:
+            print("Starting up")
+            self.stopped = False
+            if (self.isPi):
+                print("Using Pi's PiCamera")
+                self.camera = pc.PiCamera()
+                self.camera.resolution = tuple(VIDEO_FEED_SIZE)
+                self.camera.framerate = FRAMERATE
+                self.piCapture = PiRGBArray(self.camera, size=tuple(VIDEO_FEED_SIZE))
+                self.stream = self.camera.capture_continuous(
+                    self.piCapture, 
+                    format="bgr",
+                    use_video_port=True)
+                time.sleep(2.0)
+                print("Pi video feed opened")
+                Thread(target=self.update, args=(True,)).start()
+            else:
+                print("Using CV2's VideoCapture")
+                # get video feed from default camera device
+                self.camera = cv2.VideoCapture(0)
+                while (True):
+                    if not self.camera.isOpened():
+                        time.sleep(2)
+                    else:
+                        break
+                print("CV2 video feed opened")
+                while (True):
+                    response, frame = self.camera.read()
+                    if not response:
+                        print("Error: CV2 could not obtain frame")
+                        # couldn't obtain a frame
+                        return
+                    self.processFrame(frame)
 
-                if self.stopped:
-                    self.closeGently(False)
-                    return
+                    if self.stopped:
+                        self.closeGently(False)
+                        return
+        except KeyboardInterrupt:
+            # Quit on "Ctrl-C"
+            return
 
     def update(self, isPi):
         for f in self.stream:
@@ -191,13 +197,13 @@ class Ambilight:
             )
             avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
             ledsTop[s] = avgCol
-            cv2.rectangle(
+            '''cv2.rectangle(
                 frame, 
                 pointTL,    #top left vertex
                 pointBR,    #bottom right vertex
                 avgCol,
                 -1          #thickness, negative means filled
-            )
+            )'''
             pointTL = (
                 startX + (s*squareWidth),
                 VIDEO_FEED_SIZE[1] -
@@ -209,13 +215,13 @@ class Ambilight:
             )
             avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
             ledsBottom[s] = avgCol
-            cv2.rectangle(
+            '''cv2.rectangle(
                 frame, 
                 pointTL,
                 pointBR,
                 avgCol,
                 -1
-            )
+            )'''
         for s in range(1, numLedsVert-1, 2):
             pointTL = (
                 0, 
@@ -227,13 +233,13 @@ class Ambilight:
             )
             avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
             ledsLeft[s] = avgCol
-            cv2.rectangle(
+            '''cv2.rectangle(
                 frame, 
                 pointTL,    #top left vertex
                 pointBR,    #bottom right vertex
                 avgCol,
                 -1          #thickness, negative means filled
-            )
+            )'''
             pointTL = (
                 VIDEO_FEED_SIZE[0] -
                     (squareWidth*RECTANGLE_SPREAD_MULTIPLIER),
@@ -245,13 +251,13 @@ class Ambilight:
             )
             avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
             ledsRight[s] = avgCol
-            cv2.rectangle(
+            '''cv2.rectangle(
                 frame, 
                 pointTL,
                 pointBR,
                 avgCol,
                 -1
-            )
+            )'''
 
         LEDPosition.TOP.putLEDs(leds, ledsTop)
         LEDPosition.RIGHT.putLEDs(leds, ledsRight)
