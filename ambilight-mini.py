@@ -11,10 +11,10 @@ import timeit
 # and now the most important of all
 import cv2
 
-VIDEO_FEED_SIZE = [640, 360] #[width, height] in pixels
-FRAMERATE = 15
+VIDEO_FEED_SIZE = [112, 63] #[width, height] in pixels
+FRAMERATE = 20
 
-BLUR_AMT = 15
+BLUR_AMT = 5
 
 #amount to go "inwards" multiplied by current rectangle width or height
 RECTANGLE_SPREAD_MULTIPLIER = 4
@@ -68,7 +68,7 @@ class FadecandyOffset:
             ledColors[l] = np.array(
                 [ledColors[l-1], ledColors[l+1]]
             ).mean(axis=0)
-        leds[startIdx:startIdx+self.count] = ledColors
+        leds[startIdx:startIdx+self.count] = np.array(ledColors)[...,::-1]
 
 # Strip: Fadecandy Offset, led start - led end
 # Top:      0, 0 - 51
@@ -90,7 +90,7 @@ class Ambilight:
 
     camera = None
     piCapture = None
-    useDisplay = True
+    useDisplay = False
     stream = None
     stopped = False
 
