@@ -31,7 +31,7 @@ numLedsTotal = (numLedsVert * 2) + (numLedsHoriz * 2)
 
 FADECANDY_NUM_STRIPS = 3
 FADECANDY_MAX_LEDSPEROUT = 64
-LED_MIN_CUTOFF = 30 # out of 255
+LED_MIN_CUTOFF = 35 # out of 255
 
 squareWidth = int(VIDEO_FEED_SIZE[0] / numLedsHoriz)
 squareHeight = int(VIDEO_FEED_SIZE[1] / numLedsVert)
@@ -99,7 +99,7 @@ class Ambilight:
 
     #METHODS
 
-    leds = np.uint8([[0,0,0]] * 64*3)
+    leds = np.uint8([[0,0,0]] * FADECANDY_MAX_LEDSPEROUT*FADECANDY_NUM_STRIPS)
 
     #[[r,g,b], [r,g,b], ...]
     def sendLEDs(self, arr):
@@ -130,7 +130,10 @@ class Ambilight:
             self.camera = pc.PiCamera()
             self.camera.resolution = tuple(VIDEO_FEED_SIZE)
             self.camera.framerate = FRAMERATE
-            self.piCapture = PiRGBArray(self.camera, size=tuple(VIDEO_FEED_SIZE))
+            self.piCapture = PiRGBArray(
+                self.camera, 
+                size=tuple(VIDEO_FEED_SIZE)
+            )
             self.stream = self.camera.capture_continuous(
                 self.piCapture, 
                 format="bgr",
@@ -162,153 +165,153 @@ class Ambilight:
 
     def update(self, isPi):
         for f in self.stream:
-            try:
-                frame = f.array
-                self.processFrame(frame)
-                self.piCapture.truncate(0)
+            frame = f.array
+            self.processFrame(frame)
+            self.piCapture.truncate(0)
 
-                if self.stopped:
-                    self.closeGently(True)
-                    return
-            except KeyboardInterrupt:
-                # Quit on "Ctrl-C"
-                self.stopped = True
-                break
+            if self.stopped:
+                self.closeGently(True)
+                return
 
     def processFrame(self, frame):
-        frameStartTime = timeit.default_timer()
+        try:
+            frameStartTime = timeit.default_timer()
 
-        blur = cv2.blur(frame, (BLUR_AMT, BLUR_AMT), (-1, -1))
-        blurTime = timeit.default_timer() - frameStartTime
+            blur = cv2.blur(frame, (BLUR_AMT, BLUR_AMT), (-1, -1))
+            blurTime = timeit.default_timer() - frameStartTime
 
-        leds = np.fmax(
-                np.subtract(self.leds,FADE_AMT_PER_FRAME), 
-        0);
-        
-        ledsTop = ([[0,0,0]] * LEDPosition.TOP.count)
-        ledsRight = ([[0,0,0]] * LEDPosition.RIGHT.count)
-        ledsBottom = ([[0,0,0]] * LEDPosition.BOTTOM.count)
-        ledsLeft = ([[0,0,0]] * LEDPosition.LEFT.count)
+            leds = np.fmax(
+                    np.subtract(self.leds,FADE_AMT_PER_FRAME), 
+            0);
+            
+            ledsTop = ([[0,0,0]] * LEDPosition.TOP.count)
+            ledsRight = ([[0,0,0]] * LEDPosition.RIGHT.count)
+            ledsBottom = ([[0,0,0]] * LEDPosition.BOTTOM.count)
+            ledsLeft = ([[0,0,0]] * LEDPosition.LEFT.count)
 
-        for s in range(0, numLedsHoriz, 2):
-            pointTL = (startX + (s*squareWidth), 0)
-            pointBR = (
-                startX + ((s+1)*squareWidth),
-                squareHeight*RECTANGLE_SPREAD_MULTIPLIER
-            )
-            avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
-            ledsTop[s] = avgCol
-            '''cv2.rectangle(
-                frame, 
-                pointTL,    #top left vertex
-                pointBR,    #bottom right vertex
-                avgCol,
-                -1          #thickness, negative means filled
-            )'''
-            pointTL = (
-                startX + (s*squareWidth),
-                VIDEO_FEED_SIZE[1] -
-                    (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)
-            )
-            pointBR = (
-                startX + ((s+1)*squareWidth),
-                VIDEO_FEED_SIZE[1]
-            )
-            avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
-            ledsBottom[s] = avgCol
-            '''cv2.rectangle(
-                frame, 
-                pointTL,
-                pointBR,
-                avgCol,
-                -1
-            )'''
-        for s in range(1, numLedsVert-1, 2):
-            pointTL = (
-                0, 
-                startY + (s*squareHeight)
-            )
-            pointBR = (
-                squareWidth*RECTANGLE_SPREAD_MULTIPLIER,
-                startY + ((s+1)*squareHeight)
-            )
-            avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
-            ledsLeft[s] = avgCol
-            '''cv2.rectangle(
-                frame, 
-                pointTL,    #top left vertex
-                pointBR,    #bottom right vertex
-                avgCol,
-                -1          #thickness, negative means filled
-            )'''
-            pointTL = (
-                VIDEO_FEED_SIZE[0] -
-                    (squareWidth*RECTANGLE_SPREAD_MULTIPLIER),
-                startY + (s*squareHeight)
-            )
-            pointBR = (
-                VIDEO_FEED_SIZE[0],
-                startY + ((s+1)*squareHeight)
-            )
-            avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
-            ledsRight[s] = avgCol
-            '''cv2.rectangle(
-                frame, 
-                pointTL,
-                pointBR,
-                avgCol,
-                -1
-            )'''
+            for s in range(0, numLedsHoriz, 2):
+                pointTL = (startX + (s*squareWidth), 0)
+                pointBR = (
+                    startX + ((s+1)*squareWidth),
+                    squareHeight*RECTANGLE_SPREAD_MULTIPLIER
+                )
+                avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
+                ledsTop[s] = avgCol
+                '''cv2.rectangle(
+                    frame, 
+                    pointTL,    #top left vertex
+                    pointBR,    #bottom right vertex
+                    avgCol,
+                    -1          #thickness, negative means filled
+                )'''
+                pointTL = (
+                    startX + (s*squareWidth),
+                    VIDEO_FEED_SIZE[1] -
+                        (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)
+                )
+                pointBR = (
+                    startX + ((s+1)*squareWidth),
+                    VIDEO_FEED_SIZE[1]
+                )
+                avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
+                ledsBottom[s] = avgCol
+                '''cv2.rectangle(
+                    frame, 
+                    pointTL,
+                    pointBR,
+                    avgCol,
+                    -1
+                )'''
+            for s in range(1, numLedsVert-1, 2):
+                pointTL = (
+                    0, 
+                    startY + (s*squareHeight)
+                )
+                pointBR = (
+                    squareWidth*RECTANGLE_SPREAD_MULTIPLIER,
+                    startY + ((s+1)*squareHeight)
+                )
+                avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
+                ledsLeft[s] = avgCol
+                '''cv2.rectangle(
+                    frame, 
+                    pointTL,    #top left vertex
+                    pointBR,    #bottom right vertex
+                    avgCol,
+                    -1          #thickness, negative means filled
+                )'''
+                pointTL = (
+                    VIDEO_FEED_SIZE[0] -
+                        (squareWidth*RECTANGLE_SPREAD_MULTIPLIER),
+                    startY + (s*squareHeight)
+                )
+                pointBR = (
+                    VIDEO_FEED_SIZE[0],
+                    startY + ((s+1)*squareHeight)
+                )
+                avgCol = self.getAvgColorForFrame(blur, pointTL, pointBR)
+                ledsRight[s] = avgCol
+                '''cv2.rectangle(
+                    frame, 
+                    pointTL,
+                    pointBR,
+                    avgCol,
+                    -1
+                )'''
 
-        LEDPosition.TOP.putLEDs(leds, ledsTop)
-        LEDPosition.RIGHT.putLEDs(leds, ledsRight)
-        LEDPosition.BOTTOM.putLEDs(leds, ledsBottom)
-        LEDPosition.LEFT.putLEDs(leds, ledsLeft)
+            LEDPosition.TOP.putLEDs(leds, ledsTop)
+            LEDPosition.RIGHT.putLEDs(leds, ledsRight)
+            LEDPosition.BOTTOM.putLEDs(leds, ledsBottom)
+            LEDPosition.LEFT.putLEDs(leds, ledsLeft)
 
-        if self.useDisplay:
-            dateTimeStr = datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p")
-            cv2.putText(frame, str(dateTimeStr), 
-                (
-                    (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
-                    (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+10
-                ),
-                cv2.FONT_HERSHEY_PLAIN, 0.5, (255,100,100), 1
-            )
-            cv2.putText(frame, "Press q to quit", 
-                (
-                    (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
-                    (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+20
-                ),
-                cv2.FONT_HERSHEY_PLAIN, 0.5, (255,100,100), 1
-            )
-
-            if (SHOW_FPS):
-                frameTime = timeit.default_timer() - frameStartTime
-                cv2.putText(frame, "Frame time: "+str(frameTime), 
+            if self.useDisplay:
+                dateTimeStr = datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p")
+                cv2.putText(frame, str(dateTimeStr), 
                     (
                         (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
-                        (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+35
+                        (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+10
                     ),
-                    cv2.FONT_HERSHEY_PLAIN, 0.75, (255,100,50), 1
+                    cv2.FONT_HERSHEY_PLAIN, 0.5, (255,100,100), 1
                 )
-            cv2.putText(frame, "Blur time: "+str(blurTime), 
-                (
-                    (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
-                    (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+45
-                ),
-                cv2.FONT_HERSHEY_PLAIN, 0.75, (255,100,100), 1
-            )
+                cv2.putText(frame, "Press q to quit", 
+                    (
+                        (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
+                        (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+20
+                    ),
+                    cv2.FONT_HERSHEY_PLAIN, 0.5, (255,100,100), 1
+                )
 
-            cv2.imshow("Feed", frame)
-            #cv2.imshow("BBLUR", blur)    
+                if (SHOW_FPS):
+                    frameTime = timeit.default_timer() - frameStartTime
+                    cv2.putText(frame, "Frame time: "+str(frameTime), 
+                        (
+                            (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
+                            (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+35
+                        ),
+                        cv2.FONT_HERSHEY_PLAIN, 0.75, (255,100,50), 1
+                    )
+                cv2.putText(frame, "Blur time: "+str(blurTime), 
+                    (
+                        (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+10, 
+                        (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+45
+                    ),
+                    cv2.FONT_HERSHEY_PLAIN, 0.75, (255,100,100), 1
+                )
 
-            # exit on 'q' key press
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord("q"):
+                cv2.imshow("Feed", frame)
+                #cv2.imshow("BBLUR", blur)    
+
+                # exit on 'q' key press
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord("q"):
+                    self.stopped = True
+
+            self.leds = leds
+            self.sendLEDs(leds.tolist())
+        except KeyboardInterrupt:
+            # Quit on "Ctrl-C"
             self.stopped = True
-
-        self.leds = leds
-        self.sendLEDs(leds.tolist())
+            return
 
     def closeGently(self, isPi):
         if (not isPi):
