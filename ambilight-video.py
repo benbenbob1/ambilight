@@ -71,7 +71,10 @@ class FadecandyOffset:
             ledColors[l] = np.array(
                 [ledColors[l-1], ledColors[l+1]]
             ).mean(axis=0)
-        leds[startIdx:startIdx+self.count] = np.array(ledColors)[...,::-1]
+        if self.inverted:
+            leds[startIdx:startIdx+self.count] = np.array(ledColors)[::-1,::-1]
+        else:
+            leds[startIdx:startIdx+self.count] = np.array(ledColors)[...,::-1]
 
 # Strip: Fadecandy Offset, led start - led end
 # Top:      0, 0 - 51
@@ -81,7 +84,7 @@ class FadecandyOffset:
 
 class LEDPosition:
     TOP = FadecandyOffset(0, 0, 52, False)
-    RIGHT = FadecandyOffset(2, 28, 28, False)
+    RIGHT = FadecandyOffset(2, 28, 28, True)
     BOTTOM = FadecandyOffset(1, 0, 52, False)
     LEFT = FadecandyOffset(2, 0, 28, False)
 
