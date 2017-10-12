@@ -11,12 +11,12 @@ import timeit
 # and now the most important of all
 import cv2
 
-VIDEO_LOC = "bob.mov"
+VIDEO_LOC = "Ambilight Test.mov"
 
-VIDEO_FEED_SIZE = [640, 480] #[width, height] in pixels
-FRAMERATE = 15
+VIDEO_FEED_SIZE = [112, 63] #[width, height] in pixels
+FRAMERATE = 10
 
-BLUR_AMT = 15
+BLUR_AMT = 5
 
 #amount to go "inwards" multiplied by current rectangle width or height
 RECTANGLE_SPREAD_MULTIPLIER = 4
@@ -33,6 +33,7 @@ numLedsTotal = (numLedsVert * 2) + (numLedsHoriz * 2)
 
 FADECANDY_NUM_STRIPS = 3
 FADECANDY_MAX_LEDSPEROUT = 64
+LED_MIN_CUTOFF = 35 # out of 255
 
 squareWidth = int(VIDEO_FEED_SIZE[0] / numLedsHoriz)
 squareHeight = int(VIDEO_FEED_SIZE[1] / numLedsVert)
@@ -66,7 +67,11 @@ class FadecandyOffset:
             len(ledColors) < self.count):
             print("ERROR: Can't write to LED "+str(startIdx))
             return
-        leds[startIdx:startIdx+self.count] = ledColors
+        for l in range(1, len(ledColors)-1, 2):
+            ledColors[l] = np.array(
+                [ledColors[l-1], ledColors[l+1]]
+            ).mean(axis=0)
+        leds[startIdx:startIdx+self.count] = np.array(ledColors)[...,::-1]
 
 # Strip: Fadecandy Offset, led start - led end
 # Top:      0, 0 - 51
@@ -96,12 +101,12 @@ class Ambilight:
 
     #METHODS
 
-    leds = np.uint8([[0,0,0]] * 64*3)
+    leds = np.uint8([[0,0,0]] * FADECANDY_MAX_LEDSPEROUT*FADECANDY_NUM_STRIPS)
 
     #[[r,g,b], [r,g,b], ...]
     def sendLEDs(self, arr):
-        normalized = np.fmin(np.fmax(arr, 0), 255)
-        print str(normalized[0]) + " - " + str(normalized[51])
+        normalized = np.fmin(arr, 255)
+        normalized[normalized < LED_MIN_CUTOFF] = 0
         if self.ledController is not None:
             self.ledController.put_pixels(normalized, channel=0)
 
@@ -162,9 +167,7 @@ class Ambilight:
         blur = cv2.blur(frame, (BLUR_AMT, BLUR_AMT), (-1, -1))
         blurTime = timeit.default_timer() - frameStartTime
 
-        leds = np.fmax(
-                np.subtract(self.leds,FADE_AMT_PER_FRAME), 
-        0);
+        leds = self.leds
         
         ledsTop = ([[0,0,0]] * LEDPosition.TOP.count)
         ledsRight = ([[0,0,0]] * LEDPosition.RIGHT.count)
