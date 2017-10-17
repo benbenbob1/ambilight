@@ -386,12 +386,12 @@ int main(int argc, char **argv) {
             if (USE_CAMERA) {
                 if (!raspicam.open()) {
                     printf("RaspiCam not opened\n");
-                    return;
+                    return -1;
                 }
                 sleep(2);
             } else {
                 printf("Pi capture from file unavailable\n");
-                return;
+                return -1;
             }
             printf("RaspiCam video feed opened\n");
             
