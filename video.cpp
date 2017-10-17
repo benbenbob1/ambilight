@@ -11,10 +11,20 @@
 #include <iostream>
 #include "opc_client.h"
 
+#ifdef __arm__
+    #include <raspicam/raspicam_cv.h>
+    const bool IS_PI = true;
+#else
+    const bool IS_PI = false;
+#endif
+
 using namespace cv;
 using namespace std;
 
-const char VIDEO_LOC[] = "Ambilight Test.mov";
+
+const bool USE_CAMERA = true;
+
+const char VIDEO_LOC[] = "bob.mov";
 const int FRAMERATE = 10;
 const int VIDEO_FEED_WIDTH = 480; //pixels
 const int VIDEO_FEED_HEIGHT = 320; //pixels
@@ -190,148 +200,129 @@ void getAvgColorForFrame(Mat &frame,
     outColor[2] = sumColB / pixHeight;
 }
 
-int process(VideoCapture &capture, LED &leds) {
-    Mat frame;
-    while (true) {
-        clock_t frameStartClock = clock();
-        capture >> frame;
-        if (frame.empty()) {
+int processFrame(Mat &frame, LED &leds) {
+    clock_t frameStartClock = clock();
+
+    Mat blurImg;
+    blur(
+        frame, blurImg, 
+        Size(BLUR_AMT, BLUR_AMT), Point(-1,-1), 
+        BORDER_DEFAULT
+    );
+
+    int ledArr[FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT][3];
+    
+    leds.top.initializeLeds();
+    leds.bottom.initializeLeds();
+
+    leds.left.initializeLeds();
+    leds.right.initializeLeds();
+
+    Vec3b color, outColor;
+    Point pointTL, pointBR;
+
+    for (int s=0; s<leds.top.count; s++) {
+        pointTL = Point(
+            startX + (s*squareWidth),
+            0
+        );
+        pointBR = Point(
+            startX + ((s+1)*squareWidth),
+            squareHeight*RECTANGLE_SPREAD_MULTIPLIER
+        );
+
+        if (pointBR.x > VIDEO_FEED_WIDTH) {
             break;
         }
 
-        Mat blurImg;
-        blur(
-            frame, blurImg, 
-            Size(BLUR_AMT, BLUR_AMT), Point(-1,-1), 
-            BORDER_DEFAULT
+        getAvgColorForFrame(blurImg, pointTL, pointBR, color);
+        leds.top.setLed(s, color);
+        outColor = leds.top.getLed(s);
+        rectangle(frame, pointTL, pointBR, outColor, -1);
+
+
+        pointTL = Point(
+            startX + (s*squareWidth),
+            VIDEO_FEED_HEIGHT - (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)
+        );
+        pointBR = Point(
+            startX + ((s+1)*squareWidth),
+            VIDEO_FEED_HEIGHT
         );
 
-        int ledArr[FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT][3];
-        
-        leds.top.initializeLeds();
-        leds.bottom.initializeLeds();
-
-        leds.left.initializeLeds();
-        leds.right.initializeLeds();
-
-        Vec3b color, outColor;
-        Point pointTL, pointBR;
-
-        for (int s=0; s<leds.top.count; s++) {
-            pointTL = Point(
-                startX + (s*squareWidth),
-                0
-            );
-            pointBR = Point(
-                startX + ((s+1)*squareWidth),
-                squareHeight*RECTANGLE_SPREAD_MULTIPLIER
-            );
-
-            if (pointBR.x > VIDEO_FEED_WIDTH) {
-                break;
-            }
-
-            getAvgColorForFrame(blurImg, pointTL, pointBR, color);
-            leds.top.setLed(s, color);
-            outColor = leds.top.getLed(s);
-            rectangle(frame, pointTL, pointBR, outColor, -1);
-
-
-            pointTL = Point(
-                startX + (s*squareWidth),
-                VIDEO_FEED_HEIGHT - (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)
-            );
-            pointBR = Point(
-                startX + ((s+1)*squareWidth),
-                VIDEO_FEED_HEIGHT
-            );
-
-            getAvgColorForFrame(blurImg, pointTL, pointBR, color);
-            leds.bottom.setLed(s, color);
-            outColor = leds.bottom.getLed(s);
-            rectangle(frame, pointTL, pointBR, outColor, -1);
-        }
-
-        for (int s=0; s<leds.left.count; s++) {
-            pointTL = Point(
-                0,
-                startY + (s*squareHeight)
-            );
-            pointBR = Point(
-                squareWidth*RECTANGLE_SPREAD_MULTIPLIER,
-                startY + ((s+1)*squareHeight)
-            );
-
-            if (pointBR.y > VIDEO_FEED_HEIGHT) {
-                break;
-            }
-
-            getAvgColorForFrame(blurImg, pointTL, pointBR, color);
-            leds.left.setLed(s, color);
-            outColor = leds.left.getLed(s);
-            rectangle(frame, pointTL, pointBR, outColor, -1);
-
-
-            pointTL = Point(
-                VIDEO_FEED_WIDTH - (squareWidth*RECTANGLE_SPREAD_MULTIPLIER),
-                startY + (s*squareHeight)
-            );
-            pointBR = Point(
-                VIDEO_FEED_WIDTH,
-                startY + ((s+1)*squareHeight)
-            );
-
-            getAvgColorForFrame(blurImg, pointTL, pointBR, color);
-            leds.right.setLed(s, color);
-            outColor = leds.right.getLed(s);
-            rectangle(frame, pointTL, pointBR, outColor, -1);
-        }
-
-        leds.sendLEDs();
-        
-        if (USE_DISPLAY) {
-            Scalar color = Scalar(255, 0, 0); //bgr
-            putText(frame, "Press q to quit", Point(
-                    (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+5, 
-                    (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+5
-                ),
-                FONT_HERSHEY_PLAIN, 0.75, color, 1);
-
-            clock_t frameEndClock = clock();
-            double diff = (double)(frameEndClock - frameStartClock) / 
-                CLOCKS_PER_SEC; //CPS declared in <time.h>
-
-            std::stringstream str;
-            str << "Frame time: " << diff << " seconds";
-            putText(frame, str.str(), Point(
-                    (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+5, 
-                    (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+15
-                ),
-                FONT_HERSHEY_PLAIN, 0.75, color, 1);
-        }
-
-        imshow("feed", frame);
-        //imshow("blur", blurImg);
-
-        char key = (char)waitKey(30);
-        if (key == 'q') {
-            return 0;
-        }
+        getAvgColorForFrame(blurImg, pointTL, pointBR, color);
+        leds.bottom.setLed(s, color);
+        outColor = leds.bottom.getLed(s);
+        rectangle(frame, pointTL, pointBR, outColor, -1);
     }
-    return 0;
-}
 
-void setup(VideoCapture &capture) {
-    squareWidth = VIDEO_FEED_WIDTH / NUM_LEDS_HORIZ;
-    squareHeight = VIDEO_FEED_HEIGHT / NUM_LEDS_VERT;
+    for (int s=0; s<leds.left.count; s++) {
+        pointTL = Point(
+            0,
+            startY + (s*squareHeight)
+        );
+        pointBR = Point(
+            squareWidth*RECTANGLE_SPREAD_MULTIPLIER,
+            startY + ((s+1)*squareHeight)
+        );
 
-    startX = int(((double)VIDEO_FEED_WIDTH/2.0)-((double)NUM_LEDS_HORIZ*(double)squareWidth*0.5));
-    startY = int(((double)VIDEO_FEED_HEIGHT/2.0)-((double)NUM_LEDS_VERT*(double)squareHeight*0.5));
+        if (pointBR.y > VIDEO_FEED_HEIGHT) {
+            break;
+        }
 
-    printf("Square: [%dx%d]\n", squareWidth, squareHeight);
+        getAvgColorForFrame(blurImg, pointTL, pointBR, color);
+        leds.left.setLed(s, color);
+        outColor = leds.left.getLed(s);
+        rectangle(frame, pointTL, pointBR, outColor, -1);
 
-    LED leds;
-    process(capture, leds);
+
+        pointTL = Point(
+            VIDEO_FEED_WIDTH - (squareWidth*RECTANGLE_SPREAD_MULTIPLIER),
+            startY + (s*squareHeight)
+        );
+        pointBR = Point(
+            VIDEO_FEED_WIDTH,
+            startY + ((s+1)*squareHeight)
+        );
+
+        getAvgColorForFrame(blurImg, pointTL, pointBR, color);
+        leds.right.setLed(s, color);
+        outColor = leds.right.getLed(s);
+        rectangle(frame, pointTL, pointBR, outColor, -1);
+    }
+
+    leds.sendLEDs();
+    
+    if (USE_DISPLAY) {
+        Scalar color = Scalar(255, 0, 0); //bgr
+        putText(frame, "Press q to quit", Point(
+                (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+5, 
+                (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+5
+            ),
+            FONT_HERSHEY_PLAIN, 0.75, color, 1);
+
+        clock_t frameEndClock = clock();
+        double diff = (double)(frameEndClock - frameStartClock) / 
+            CLOCKS_PER_SEC; //CPS declared in <time.h>
+
+        std::stringstream str;
+        str << "Frame time: " << diff << " seconds";
+        putText(frame, str.str(), Point(
+                (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+5, 
+                (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+15
+            ),
+            FONT_HERSHEY_PLAIN, 0.75, color, 1);
+    }
+
+    imshow("feed", frame);
+    //imshow("blur", blurImg);
+
+    char key = (char)waitKey(30);
+    if (key == 'q') {
+        return -1;
+    }
+
+    return 1;
 }
 
 void test() {
@@ -365,24 +356,93 @@ void test() {
     */
 }
 
+void setupEnvironment() {
+    squareWidth = VIDEO_FEED_WIDTH / NUM_LEDS_HORIZ;
+    squareHeight = VIDEO_FEED_HEIGHT / NUM_LEDS_VERT;
+
+    startX = int(((double)VIDEO_FEED_WIDTH/2.0)-((double)NUM_LEDS_HORIZ*(double)squareWidth*0.5));
+    startY = int(((double)VIDEO_FEED_HEIGHT/2.0)-((double)NUM_LEDS_VERT*(double)squareHeight*0.5));
+
+    printf("LED Square: [%dx%d]\n", squareWidth, squareHeight);
+
+    if (USE_DISPLAY) {
+        namedWindow("feed",1);
+    }
+}
+
 int main(int argc, char **argv) {
     printf("Starting up\n");
-    printf("Using CV2's VideoCapture\n");
-    printf("File: \"%s\"\n", VIDEO_LOC);
-    VideoCapture camera(VIDEO_LOC);
-    //VideoCapture camera(0);
-    while (!camera.isOpened()) {
-        printf("Camera not opened. Trying again....\n");
-        usleep(10000);
-    }
-    printf("CV2 video feed opened\n");
-    namedWindow("feed",1);
 
+    setupEnvironment();
+
+    LED leds;
     Mat frame;
 
-    //test();
+    if (IS_PI) {
+        #ifdef __arm__
+            raspicam::RaspiCam raspicam;
+            printf("RaspiCam video feed opening...\n");
+            raspicam.set( CV_CAP_PROP_FORMAT, CV_8UC1 ); //?
+            if (USE_CAMERA) {
+                if (!raspicam.open()) {
+                    printf("RaspiCam not opened\n");
+                    return;
+                }
+                sleep(2);
+            } else {
+                printf("Pi capture from file unavailable\n");
+                return;
+            }
+            printf("RaspiCam video feed opened\n");
+            
+            while (true) {
+                raspicam.grab();
+                raspicam.retrieve(frame);
+                if (frame.empty()) {
+                    break;
+                }
+                int out = processFrame(frame, leds);
+                if (out == -1) {
+                    break;
+                }
+            }
+            raspicam.release();
 
-    setup(camera);
+            printf("RaspiCam video feed closed\n");
+        #else
+            printf("Can't use RaspiCam without a Pi!\n");
+            return -1;
+        #endif
+    }
+    else {
+        VideoCapture camera = NULL;
+        printf("CV2 video feed opening...\n");
+        if (USE_CAMERA) {
+            VideoCapture camera(0);
+            while (!camera.isOpened()) {
+                printf("Camera not opened. Trying again....\n");
+                usleep(10000);
+            }
+        } else {
+            printf("Capturing from file: \"%s\"\n", VIDEO_LOC);
+            VideoCapture camera(VIDEO_LOC);
+        }
+        printf("CV2 video feed opened\n");
+
+        while (true) {
+            camera >> frame;
+            if (frame.empty()) {
+                break;
+            }
+            int out = processFrame(frame, leds);
+            if (out == -1) {
+                break;
+            }
+        }
+        camera.release();
+
+        printf("CV2 video feed closed\n");
+    }
 
     return 0;
 }
