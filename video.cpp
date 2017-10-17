@@ -369,11 +369,11 @@ int main(int argc, char **argv) {
     printf("Starting up\n");
     printf("Using CV2's VideoCapture\n");
     printf("File: \"%s\"\n", VIDEO_LOC);
-    //VideoCapture camera(VIDEO_LOC);
-    VideoCapture camera(0);
+    VideoCapture camera(VIDEO_LOC);
+    //VideoCapture camera(0);
     while (!camera.isOpened()) {
-        printf("Opening...");
-        usleep(300);
+        printf("Camera not opened. Trying again...\n");
+        usleep(1000);
     }
     printf("CV2 video feed opened\n");
     namedWindow("feed",1);
