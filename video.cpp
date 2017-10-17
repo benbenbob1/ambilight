@@ -9,6 +9,7 @@
 #include <opencv2/highgui.hpp>
 #include <highgui.h>
 #include <iostream>
+#include "opc_client.h"
 
 using namespace cv;
 using namespace std;
@@ -26,6 +27,9 @@ const int RECTANGLE_SPREAD_MULTIPLIER = 4;
 const int LED_MIN_CUTOFF = 35; //min value out of 255
 const int FADECANDY_NUM_STRIPS = 3;
 const int FADECANDY_MAX_LEDSPEROUT = 64;
+
+const char OPC_SOCKET_HOST[] = "127.0.0.1";
+const int OPC_SOCKET_PORT = 7890;
 
 const bool USE_DISPLAY = true;
 
@@ -77,9 +81,9 @@ public:
         return NULL;
     }
 
-    template <size_t num_leds, size_t num_colors>
     //LedsToSet MUST be of length count
-    void putLEDs(int (*allLeds)[FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT][3]) {
+    //Returns number of leds set
+    int putLEDs(Vec3b (*allLeds)[FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT]) {
         int startIdx = (fcOffset*FADECANDY_MAX_LEDSPEROUT)+startIndex;
         for (int l=0; l<count; l++) {
             Vec3b color = getLed(l);
@@ -87,22 +91,77 @@ public:
             (*allLeds)[startIndex+l][1] = color[1];
             (*allLeds)[startIndex+l][2] = color[2];
         }
+        return count;
     }
 };
 
-class LEDPosition {
+class LED {
 public:
     LEDStrip top;
     LEDStrip right;
     LEDStrip bottom;
     LEDStrip left;
+    OPCClient opc;
 
-    LEDPosition() {
+    LED() {
         top.setValues(0, 0, 52, false);
         right.setValues(2, 28, 28, true);
         bottom.setValues(1, 0, 52, false);
         left.setValues(2, 0, 28, false);
+
+        printf("Connecting to OPC socket...\n");
+        bool result = initialize();
+        printf("Connection was %s\n", (result?"successful":"unsuccessful"));;
     }
+
+    /*
+    ~LED() {
+        if (opc.isConnected()) {
+            opc.closeSocket();
+        }
+    }
+    */
+
+    bool ledsConnected() {
+        return opc.isConnected();
+    }
+
+    //Sends over the LED buffers
+    bool sendLEDs() {
+        int ledCount = 0;
+        ledCount += top.putLEDs(&leds);
+        ledCount += bottom.putLEDs(&leds);
+
+        ledCount += left.putLEDs(&leds);
+        ledCount += right.putLEDs(&leds);
+
+        uint8_t outleds[ledCount*3];
+        for (int l=0; l<ledCount; l++) {
+            uint8_t outpxR = leds[l][2];
+            uint8_t outpxG = leds[l][1];
+            uint8_t outpxB = leds[l][0];
+            outleds[l+0] = outpxR;
+            outleds[l+1] = outpxG;
+            outleds[l+2] = outpxB;
+        }
+
+        if (ledsConnected()) {
+            return opc.write(outleds, ledCount*3);
+        }
+
+        return false;
+    }
+
+    bool initialize() {
+        bool resolve = opc.resolve(OPC_SOCKET_HOST, OPC_SOCKET_PORT);
+        if (resolve) {
+            return opc.tryConnect();
+        }
+        return false;
+    }
+
+private:
+    Vec3b leds[FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT];
 };
 
 void getAvgColorForFrame(Mat &frame, 
@@ -131,7 +190,7 @@ void getAvgColorForFrame(Mat &frame,
     outColor[2] = sumColB / pixHeight;
 }
 
-int process(VideoCapture &capture, LEDPosition &leds) {
+int process(VideoCapture &capture, LED &leds) {
     Mat frame;
     while (true) {
         clock_t frameStartClock = clock();
@@ -228,6 +287,7 @@ int process(VideoCapture &capture, LEDPosition &leds) {
             rectangle(frame, pointTL, pointBR, outColor, -1);
         }
 
+        leds.sendLEDs();
         
         if (USE_DISPLAY) {
             Scalar color = Scalar(255, 0, 0); //bgr
@@ -270,7 +330,7 @@ void setup(VideoCapture &capture) {
 
     printf("Square: [%dx%d]\n", squareWidth, squareHeight);
 
-    LEDPosition leds;
+    LED leds;
     process(capture, leds);
 }
 
