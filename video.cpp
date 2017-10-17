@@ -78,7 +78,7 @@ public:
         if (index < count) {
             return leds[index];
         }
-        return NULL;
+        return Vec3b();
     }
 
     //LedsToSet MUST be of length count
@@ -372,8 +372,8 @@ int main(int argc, char **argv) {
     VideoCapture camera(VIDEO_LOC);
     //VideoCapture camera(0);
     while (!camera.isOpened()) {
-        printf("Camera not opened. Trying again...\n");
-        usleep(1000);
+        printf("Camera not opened. Trying again....\n");
+        usleep(10000);
     }
     printf("CV2 video feed opened\n");
     namedWindow("feed",1);
