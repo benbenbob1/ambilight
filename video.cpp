@@ -380,7 +380,7 @@ int main(int argc, char **argv) {
 
     if (IS_PI) {
         #ifdef __arm__
-            raspicam::RaspiCam raspicam;
+            raspicam::RaspiCam_Cv raspicam;
             printf("RaspiCam video feed opening...\n");
             raspicam.set( CV_CAP_PROP_FORMAT, CV_8UC1 ); //?
             if (USE_CAMERA) {
