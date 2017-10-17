@@ -380,11 +380,11 @@ int main(int argc, char **argv) {
 
     if (IS_PI) {
         #ifdef __arm__
-            raspicam::RaspiCam_Cv raspicam;
+            raspicam::RaspiCam_Cv rpicam;
             printf("RaspiCam video feed opening...\n");
-            raspicam.set( CV_CAP_PROP_FORMAT, CV_8UC1 ); //?
+            rpicam.set( CV_CAP_PROP_FORMAT, CV_8UC1 ); //?
             if (USE_CAMERA) {
-                if (!raspicam.open()) {
+                if (!rpicam.open()) {
                     printf("RaspiCam not opened\n");
                     return -1;
                 }
@@ -396,8 +396,8 @@ int main(int argc, char **argv) {
             printf("RaspiCam video feed opened\n");
             
             while (true) {
-                raspicam.grab();
-                raspicam.retrieve(frame);
+                rpicam.grab();
+                rpicam.retrieve(frame);
                 if (frame.empty()) {
                     break;
                 }
@@ -406,7 +406,7 @@ int main(int argc, char **argv) {
                     break;
                 }
             }
-            raspicam.release();
+            rpicam.release();
 
             printf("RaspiCam video feed closed\n");
         #else
