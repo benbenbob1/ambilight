@@ -42,6 +42,7 @@ const char OPC_SOCKET_HOST[] = "127.0.0.1";
 const int OPC_SOCKET_PORT = 7890;
 
 const bool USE_DISPLAY = true;
+const bool RESIZE_INPUT = true;
 
 int squareWidth, squareHeight;
 int startX, startY;
@@ -223,6 +224,10 @@ void getAvgColorForFrame(Mat &frame,
 
 int processFrame(Mat &frame, LED &leds) {
     clock_t frameStartClock = clock();
+
+    if (RESIZE_INPUT) {
+        resize(frame, frame, Size(VIDEO_FEED_WIDTH, VIDEO_FEED_HEIGHT));
+    }
 
     Mat blurImg;
     blur(
