@@ -382,7 +382,7 @@ int main(int argc, char **argv) {
         #ifdef __arm__
             raspicam::RaspiCam_Cv rpicam;
             printf("RaspiCam video feed opening...\n");
-            rpicam.set( CV_CAP_PROP_FORMAT, CV_8UC1 ); //?
+            rpicam.set( CV_CAP_PROP_FORMAT, CV_8UC3 ); //?
             if (USE_CAMERA) {
                 if (!rpicam.open()) {
                     printf("RaspiCam not opened\n");
