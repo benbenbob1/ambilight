@@ -25,7 +25,7 @@ using namespace std;
 const bool USE_CAMERA = true;
 
 const char VIDEO_LOC[] = "bob.mov";
-const int FRAMERATE = 10;
+const int FRAMERATE = 15;
 const int VIDEO_FEED_WIDTH = 480; //pixels
 const int VIDEO_FEED_HEIGHT = 320; //pixels
 
@@ -382,7 +382,10 @@ int main(int argc, char **argv) {
         #ifdef __arm__
             raspicam::RaspiCam_Cv rpicam;
             printf("RaspiCam video feed opening...\n");
-            rpicam.set( CV_CAP_PROP_FORMAT, CV_8UC3 ); //?
+            rpicam.set( CV_CAP_PROP_FORMAT, CV_8UC3 );//Capture 3 bits per pixel
+            rpicam.set( CV_CAP_PROP_FRAME_WIDTH, VIDEO_FEED_WIDTH );
+            rpicam.set( CV_CAP_PROP_FRAME_HEIGHT, VIDEO_FEED_HEIGHT );
+            rpicam.set( CV_CAP_PROP_FPS, FRAMERATE );
             if (USE_CAMERA) {
                 if (!rpicam.open()) {
                     printf("RaspiCam not opened\n");
