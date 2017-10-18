@@ -22,16 +22,16 @@ using namespace cv;
 using namespace std;
 
 
-const bool USE_CAMERA = true;
+const bool USE_CAMERA = false;
 
 const char VIDEO_LOC[] = "bob.mov";
-const int FRAMERATE = 20;
+const int FRAMERATE = 12;
 const int VIDEO_FEED_WIDTH = 480; //pixels
 const int VIDEO_FEED_HEIGHT = 320; //pixels
 
 const int NUM_LEDS_HORIZ = 52;
 const int NUM_LEDS_VERT  = 28;
-const int BLUR_AMT = 11; //Must be an odd number
+const int BLUR_AMT = 13; //Must be an odd number
 //amount to go "inwards" multiplied by current rectangle width or height
 const int RECTANGLE_SPREAD_MULTIPLIER = 4;
 const int LED_MIN_CUTOFF = 35; //min value out of 255
@@ -146,7 +146,7 @@ public:
         ledCount += right.putLEDs(&leds);
 
         uint8_t outleds[ledCount*3];
-        for (int l=0; l<ledCount; l++) {
+        for (int l=0; l<ledCount*3; l+=3) {
             uint8_t outpxR = leds[l][2];
             uint8_t outpxG = leds[l][1];
             uint8_t outpxB = leds[l][0];
@@ -292,7 +292,7 @@ int processFrame(Mat &frame, LED &leds) {
     }
 
     bool result = leds.sendLEDs();
-    printf("Writing leds was %ssuccessful\n", result?"":"un");
+    //printf("Writing leds was %ssuccessful\n", result?"":"un");
     
     if (USE_DISPLAY) {
         Scalar color = Scalar(255, 0, 0); //bgr
@@ -422,10 +422,10 @@ int main(int argc, char **argv) {
         VideoCapture camera;
         printf("CV2 video feed opening...\n");
         if (USE_CAMERA) {
-            VideoCapture camera(0);
+            camera = VideoCapture(0);
         } else {
             printf("Capturing from file: \"%s\"\n", VIDEO_LOC);
-            VideoCapture camera(VIDEO_LOC);
+            camera = VideoCapture(VIDEO_LOC);
         }
 
         while (!camera.isOpened()) {
