@@ -25,7 +25,7 @@ using namespace std;
 const bool USE_CAMERA = true;
 
 const char VIDEO_LOC[] = "bob.mov";
-const int FRAMERATE = 15;
+const int FRAMERATE = 20;
 const int VIDEO_FEED_WIDTH = 480; //pixels
 const int VIDEO_FEED_HEIGHT = 320; //pixels
 
@@ -291,7 +291,8 @@ int processFrame(Mat &frame, LED &leds) {
         rectangle(frame, pointTL, pointBR, outColor, -1);
     }
 
-    leds.sendLEDs();
+    bool result = leds.sendLEDs();
+    printf("Writing leds was %ssuccessful\n", result?"":"un");
     
     if (USE_DISPLAY) {
         Scalar color = Scalar(255, 0, 0); //bgr
