@@ -150,10 +150,12 @@ public:
             uint8_t outpxR = leds[l][2];
             uint8_t outpxG = leds[l][1];
             uint8_t outpxB = leds[l][0];
-            outleds[l+0] = outpxR >> 16;
-            outleds[l+1] = outpxG >> 8;
+            outleds[l+0] = outpxR;
+            outleds[l+1] = outpxG;
             outleds[l+2] = outpxB;
         }
+
+        printf("Out: (%d, %d, %d)\n", outleds[0], outleds[1], outleds[2]);
 
         if (ledsConnected()) {
             return opc.write(outleds, ledCount*3);
