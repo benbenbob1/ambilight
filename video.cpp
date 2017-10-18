@@ -150,8 +150,8 @@ public:
             uint8_t outpxR = leds[l][2];
             uint8_t outpxG = leds[l][1];
             uint8_t outpxB = leds[l][0];
-            outleds[l+0] = outpxR;
-            outleds[l+1] = outpxG;
+            outleds[l+0] = outpxR >> 16;
+            outleds[l+1] = outpxG >> 8;
             outleds[l+2] = outpxB;
         }
 
