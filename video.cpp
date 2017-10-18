@@ -145,27 +145,20 @@ public:
         ledCount += left.putLEDs(&leds);
         ledCount += right.putLEDs(&leds);
 
-        /*uint8_t outleds[ledCount*3];
-        for (int l=0; l<ledCount*3; l+=3) {
+        uint8_t outleds[ledCount*3];
+        for (int l=0; l<ledCount; l++) {
             uint8_t outpxR = leds[l][2];
             uint8_t outpxG = leds[l][1];
             uint8_t outpxB = leds[l][0];
-            outleds[l+0] = outpxR;
-            outleds[l+1] = outpxG;
-            outleds[l+2] = outpxB;
+            int dataIdx = l * 3;
+            outleds[dataIdx+0] = outpxR;
+            outleds[dataIdx+1] = outpxG;
+            outleds[dataIdx+2] = outpxB;
         }
 
         if (ledsConnected()) {
             return opc.write(outleds, ledCount*3);
-        }*/
-
-        vector<uint8_t> data(ledCount*3, 0);
-        for (int l=0; l<ledCount; l++) {
-            data.push_back(leds[l][2]);
-            data.push_back(leds[l][1]);
-            data.push_back(leds[l][0]);
         }
-        opc.write(data);
 
         return false;
     }
