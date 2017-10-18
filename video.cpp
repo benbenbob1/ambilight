@@ -95,12 +95,23 @@ public:
     //Returns number of leds set
     int putLEDs(Vec3b (*allLeds)[FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT]) {
         int startIdx = (fcOffset*FADECANDY_MAX_LEDSPEROUT)+startIndex;
-        for (int l=0; l<count; l++) {
-            Vec3b color = getLed(l);
-            (*allLeds)[startIndex+l][0] = color[0];
-            (*allLeds)[startIndex+l][1] = color[1];
-            (*allLeds)[startIndex+l][2] = color[2];
+        int lOffset = 0;
+        if (inverted) {
+            for (int l=0; l<count; l++) {
+                Vec3b color = getLed((count-1)-l);
+                (*allLeds)[startIdx+l][0] = color[0];
+                (*allLeds)[startIdx+l][1] = color[1];
+                (*allLeds)[startIdx+l][2] = color[2];
+            }
+        } else {
+            for (int l=0; l<count; l++) {
+                Vec3b color = getLed(l);
+                (*allLeds)[startIdx+l][0] = color[0];
+                (*allLeds)[startIdx+l][1] = color[1];
+                (*allLeds)[startIdx+l][2] = color[2];
+            }
         }
+        
         return count;
     }
 };
@@ -112,6 +123,7 @@ public:
     LEDStrip bottom;
     LEDStrip left;
     OPCClient opc;
+    int maxLeds;
 
     LED() {
         top.setValues(0, 0, 52, false);
@@ -145,26 +157,32 @@ public:
         ledCount += left.putLEDs(&leds);
         ledCount += right.putLEDs(&leds);
 
-        uint8_t outleds[ledCount*3];
-        for (int l=0; l<ledCount; l++) {
-            uint8_t outpxR = leds[l][2];
-            uint8_t outpxG = leds[l][1];
-            uint8_t outpxB = leds[l][0];
-            int dataIdx = l * 3;
-            outleds[dataIdx+0] = outpxR;
-            outleds[dataIdx+1] = outpxG;
-            outleds[dataIdx+2] = outpxB;
-        }
-
         if (ledsConnected()) {
-            return opc.write(outleds, ledCount*3);
+            uint8_t *dest = OPCClient::Header::view(frameBuffer).data();
+            for (int l=0; l<maxLeds; l++) {
+                *(dest++) = leds[l][2];
+                *(dest++) = leds[l][1];
+                *(dest++) = leds[l][0];
+            }
+            return opc.write(frameBuffer);
         }
 
         return false;
     }
 
     bool initialize() {
+        maxLeds = FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT;
+        maxLedBufferSize = maxLeds * 3;
+
+        printf("Initializing OPC buffer with %d slots\n", maxLedBufferSize);
+
+        frameBuffer.resize(sizeof(OPCClient::Header) + maxLedBufferSize);
+        OPCClient::Header::view(frameBuffer).init(
+            0, opc.SET_PIXEL_COLORS, maxLedBufferSize
+        );
+
         bool resolve = opc.resolve(OPC_SOCKET_HOST, OPC_SOCKET_PORT);
+
         if (resolve) {
             return opc.tryConnect();
         }
@@ -173,6 +191,8 @@ public:
 
 private:
     Vec3b leds[FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT];
+    std::vector<uint8_t> frameBuffer;
+    int maxLedBufferSize;
 };
 
 void getAvgColorForFrame(Mat &frame, 
@@ -328,42 +348,20 @@ int processFrame(Mat &frame, LED &leds) {
 }
 
 void test() {
-    /*
-    int testLeds[192][3];
-
-    testLeds[0][0] = 255;
-    testLeds[0][1] = 0;
-    testLeds[0][2] = 0;
-
-    testLeds[1][0] = 0;
-    testLeds[1][1] = 255;
-    testLeds[1][2] = 0;
-
-    int newColor[1][3];
-    newColor[0][0] = 10;
-    newColor[0][1] = 10;
-    newColor[0][2] = 10;
-
-    LEDStrip first(0, 0, 1, false);
-    LEDStrip second(0, 1, 1, false);
-
-    first.putLEDs(&testLeds, newColor);
-
-    printf("Set1? (%d %d %d) \n", testLeds[0][0], testLeds[0][1], testLeds[0][2]);
-    printf("Set2? (%d %d %d) \n", testLeds[1][0], testLeds[1][1], testLeds[1][2]);
-    printf("OP\n");
-    second.putLEDs(&testLeds, newColor);
-    printf("Set1? (%d %d %d) \n", testLeds[0][0], testLeds[0][1], testLeds[0][2]);
-    printf("Set2? (%d %d %d) \n", testLeds[1][0], testLeds[1][1], testLeds[1][2]);
-    */
 }
 
 void setupEnvironment() {
     squareWidth = VIDEO_FEED_WIDTH / NUM_LEDS_HORIZ;
     squareHeight = VIDEO_FEED_HEIGHT / NUM_LEDS_VERT;
 
-    startX = int(((double)VIDEO_FEED_WIDTH/2.0)-((double)NUM_LEDS_HORIZ*(double)squareWidth*0.5));
-    startY = int(((double)VIDEO_FEED_HEIGHT/2.0)-((double)NUM_LEDS_VERT*(double)squareHeight*0.5));
+    startX = int(
+        ((double)VIDEO_FEED_WIDTH/2.0) -
+        ((double)NUM_LEDS_HORIZ * (double)squareWidth*0.5)
+    );
+    startY = int(
+        ((double)VIDEO_FEED_HEIGHT/2.0) - 
+        ((double)NUM_LEDS_VERT*(double)squareHeight*0.5)
+    );
 
     printf("LED Square: [%dx%d]\n", squareWidth, squareHeight);
 
@@ -430,7 +428,7 @@ int main(int argc, char **argv) {
         }
 
         while (!camera.isOpened()) {
-            printf("Camera not opened. Trying again....\n");
+            printf("Camera not opened. Trying again...\n");
             sleep(1);
         }
 
