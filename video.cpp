@@ -378,7 +378,7 @@ int main(int argc, char **argv) {
     LED leds;
     Mat frame;
 
-    if (IS_PI) {
+    if (IS_PI && USE_CAMERA) {
         #ifdef __arm__
             raspicam::RaspiCam_Cv rpicam;
             printf("RaspiCam video feed opening...\n");
@@ -419,14 +419,16 @@ int main(int argc, char **argv) {
         printf("CV2 video feed opening...\n");
         if (USE_CAMERA) {
             VideoCapture camera(0);
-            while (!camera.isOpened()) {
-                printf("Camera not opened. Trying again....\n");
-                usleep(10000);
-            }
         } else {
             printf("Capturing from file: \"%s\"\n", VIDEO_LOC);
             VideoCapture camera(VIDEO_LOC);
         }
+
+        while (!camera.isOpened()) {
+            printf("Camera not opened. Trying again....\n");
+            sleep(1);
+        }
+
         printf("CV2 video feed opened\n");
 
         while (true) {
