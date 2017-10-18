@@ -415,7 +415,7 @@ int main(int argc, char **argv) {
         #endif
     }
     else {
-        VideoCapture camera = NULL;
+        VideoCapture camera;
         printf("CV2 video feed opening...\n");
         if (USE_CAMERA) {
             VideoCapture camera(0);
