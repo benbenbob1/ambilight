@@ -12,7 +12,7 @@
 #include "opc_client.h"
 
 #ifdef __arm__
-    #include <raspicam/raspicam_cv.h>
+    #include "cap.h"
     const bool IS_PI = true;
 #else
     const bool IS_PI = false;
@@ -22,12 +22,12 @@ using namespace cv;
 using namespace std;
 
 
-const bool USE_CAMERA = false;
+const bool USE_CAMERA = true;
 
 const char VIDEO_LOC[] = "bob.mov";
 const int FRAMERATE = 12;
-const int VIDEO_FEED_WIDTH = 480; //pixels
-const int VIDEO_FEED_HEIGHT = 320; //pixels
+const int VIDEO_FEED_WIDTH = 640; //pixels
+const int VIDEO_FEED_HEIGHT = 480; //pixels
 
 const int NUM_LEDS_HORIZ = 52;
 const int NUM_LEDS_VERT  = 28;
@@ -42,7 +42,7 @@ const char OPC_SOCKET_HOST[] = "127.0.0.1";
 const int OPC_SOCKET_PORT = 7890;
 
 const bool USE_DISPLAY = true;
-const bool RESIZE_INPUT = true;
+const bool RESIZE_INPUT = false;
 
 int squareWidth, squareHeight;
 int startX, startY;
@@ -112,7 +112,7 @@ public:
                 (*allLeds)[startIdx+l][2] = color[2];
             }
         }
-        
+
         return count;
     }
 };
@@ -196,8 +196,8 @@ private:
     int maxLedBufferSize;
 };
 
-void getAvgColorForFrame(Mat &frame, 
-    Point topLeftPoint, Point bottomRightPoint, 
+void getAvgColorForFrame(Mat &frame,
+    Point topLeftPoint, Point bottomRightPoint,
     Vec3b &outColor) {
 
     int pixHeight = bottomRightPoint.y - topLeftPoint.y;
@@ -231,13 +231,13 @@ int processFrame(Mat &frame, LED &leds) {
 
     Mat blurImg;
     blur(
-        frame, blurImg, 
-        Size(BLUR_AMT, BLUR_AMT), Point(-1,-1), 
+        frame, blurImg,
+        Size(BLUR_AMT, BLUR_AMT), Point(-1,-1),
         BORDER_DEFAULT
     );
 
     int ledArr[FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT][3];
-    
+
     leds.top.initializeLeds();
     leds.bottom.initializeLeds();
 
@@ -319,23 +319,23 @@ int processFrame(Mat &frame, LED &leds) {
 
     bool result = leds.sendLEDs();
     //printf("Writing leds was %ssuccessful\n", result?"":"un");
-    
+
     if (USE_DISPLAY) {
         Scalar color = Scalar(255, 0, 0); //bgr
         putText(frame, "Press q to quit", Point(
-                (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+5, 
+                (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+5,
                 (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+5
             ),
             FONT_HERSHEY_PLAIN, 0.75, color, 1);
 
         clock_t frameEndClock = clock();
-        double diff = (double)(frameEndClock - frameStartClock) / 
+        double diff = (double)(frameEndClock - frameStartClock) /
             CLOCKS_PER_SEC; //CPS declared in <time.h>
 
         std::stringstream str;
         str << "Frame time: " << diff << " seconds";
         putText(frame, str.str(), Point(
-                (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+5, 
+                (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+5,
                 (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+15
             ),
             FONT_HERSHEY_PLAIN, 0.75, color, 1);
@@ -364,7 +364,7 @@ void setupEnvironment() {
         ((double)NUM_LEDS_HORIZ * (double)squareWidth*0.5)
     );
     startY = int(
-        ((double)VIDEO_FEED_HEIGHT/2.0) - 
+        ((double)VIDEO_FEED_HEIGHT/2.0) -
         ((double)NUM_LEDS_VERT*(double)squareHeight*0.5)
     );
 
@@ -385,27 +385,28 @@ int main(int argc, char **argv) {
 
     if (IS_PI && USE_CAMERA) {
         #ifdef __arm__
-            raspicam::RaspiCam_Cv rpicam;
-            printf("RaspiCam video feed opening...\n");
-            rpicam.set( CV_CAP_PROP_FORMAT, CV_8UC3 );//Capture 3 bits per pixel
-            rpicam.set( CV_CAP_PROP_FRAME_WIDTH, VIDEO_FEED_WIDTH );
-            rpicam.set( CV_CAP_PROP_FRAME_HEIGHT, VIDEO_FEED_HEIGHT );
-            rpicam.set( CV_CAP_PROP_FPS, FRAMERATE );
+            PiCapture cap;
+            printf("PiCapture video feed opening...\n");
             if (USE_CAMERA) {
-                if (!rpicam.open()) {
-                    printf("RaspiCam not opened\n");
-                    return -1;
-                }
+                PiCapture::PARAM_FLOAT_RECT_T cropRect;
+                cropRect.x = 0.0;
+                cropRect.y = 0.0;
+                cropRect.w = 0.49;
+                cropRect.h = 0.5;
+                cap.setROI(cropRect);
+                cap.setAWBMode((MMAL_PARAM_AWBMODE_T)0);
+                cap.setAWBGains(1.0,1.0);
+                cap.setExposureMode((MMAL_PARAM_EXPOSUREMODE_T)0);
+                cap.open( VIDEO_FEED_WIDTH, VIDEO_FEED_HEIGHT, true );
                 sleep(2);
             } else {
-                printf("Pi capture from file unavailable\n");
+                printf("PiCapture from file unavailable\n");
                 return -1;
             }
-            printf("RaspiCam video feed opened\n");
-            
+            printf("PiCapture video feed opened\n");
+
             while (true) {
-                rpicam.grab();
-                rpicam.retrieve(frame);
+                frame = rpicam.grab();
                 if (frame.empty()) {
                     break;
                 }
@@ -414,11 +415,9 @@ int main(int argc, char **argv) {
                     break;
                 }
             }
-            rpicam.release();
-
-            printf("RaspiCam video feed closed\n");
+            printf("PiCapture video feed closed\n");
         #else
-            printf("Can't use RaspiCam without a Pi!\n");
+            printf("Can't use PiCapture without a Pi!\n");
             return -1;
         #endif
     }
