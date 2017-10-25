@@ -388,6 +388,8 @@ int main(int argc, char **argv) {
             PiCapture cap;
             printf("PiCapture video feed opening...\n");
             if (USE_CAMERA) {
+                cap.open( VIDEO_FEED_WIDTH, VIDEO_FEED_HEIGHT, true );
+
                 PiCapture::PARAM_FLOAT_RECT_T cropRect;
                 cropRect.x = 0.01;
                 cropRect.y = 0.01;
@@ -397,7 +399,6 @@ int main(int argc, char **argv) {
                 cap.setAWBMode(MMAL_PARAM_AWBMODE_OFF);
                 cap.setAWBGains(1.0,1.0);
                 cap.setExposureMode(MMAL_PARAM_EXPOSUREMODE_OFF);
-                cap.open( VIDEO_FEED_WIDTH, VIDEO_FEED_HEIGHT, true );
                 sleep(2);
             } else {
                 printf("PiCapture from file unavailable\n");
