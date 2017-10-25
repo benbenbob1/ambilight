@@ -208,9 +208,9 @@ void getAvgColorForFrame(Mat &frame,
         double sumRowR = 0.0, sumRowG = 0.0, sumRowB = 0.0;
         for (int y=topLeftPoint.y; y<bottomRightPoint.y; y++) {
             Vec3b px = frame.at<Vec3b>(y,x);
-            sumRowR += px[0];
+            sumRowR += px[2];
             sumRowG += px[1];
-            sumRowB += px[2];
+            sumRowB += px[0];
         }
         sumColR += sumRowR / pixWidth;
         sumColG += sumRowG / pixWidth;
@@ -223,6 +223,10 @@ void getAvgColorForFrame(Mat &frame,
 }
 
 int processFrame(Mat &frame, LED &leds) {
+    if (frame.empty()) {
+        return 0;
+    }
+    
     clock_t frameStartClock = clock();
 
     if (RESIZE_INPUT) {
@@ -300,7 +304,6 @@ int processFrame(Mat &frame, LED &leds) {
         leds.left.setLed(s, color);
         outColor = leds.left.getLed(s);
         rectangle(frame, pointTL, pointBR, outColor, -1);
-
 
         pointTL = Point(
             VIDEO_FEED_WIDTH - (squareWidth*RECTANGLE_SPREAD_MULTIPLIER),
@@ -389,7 +392,6 @@ int main(int argc, char **argv) {
             printf("PiCapture video feed opening...\n");
             if (USE_CAMERA) {
                 cap.open( VIDEO_FEED_WIDTH, VIDEO_FEED_HEIGHT, true );
-
                 PiCapture::PARAM_FLOAT_RECT_T cropRect;
                 cropRect.x = 0.01;
                 cropRect.y = 0.01;
