@@ -226,7 +226,7 @@ int processFrame(Mat &frame, LED &leds) {
     if (frame.empty()) {
         return 0;
     }
-    
+
     clock_t frameStartClock = clock();
 
     if (RESIZE_INPUT) {
@@ -347,7 +347,7 @@ int processFrame(Mat &frame, LED &leds) {
     imshow("feed", frame);
     //imshow("blur", blurImg);
 
-    char key = (char)waitKey(30);
+    char key = (char)waitKey(1);
     if (key == 'q') {
         return -1;
     }
@@ -374,7 +374,7 @@ void setupEnvironment() {
     printf("LED Square: [%dx%d]\n", squareWidth, squareHeight);
 
     if (USE_DISPLAY) {
-        namedWindow("feed",1);
+        namedWindow("feed");
     }
 }
 
@@ -443,9 +443,6 @@ int main(int argc, char **argv) {
 
         while (true) {
             camera >> frame;
-            if (frame.empty()) {
-                break;
-            }
             int out = processFrame(frame, leds);
             if (out == -1) {
                 break;
