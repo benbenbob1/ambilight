@@ -406,7 +406,7 @@ int main(int argc, char **argv) {
             printf("PiCapture video feed opened\n");
 
             while (true) {
-                frame = rpicam.grab();
+                frame = cap.grab();
                 if (frame.empty()) {
                     break;
                 }
