@@ -268,8 +268,9 @@ int processFrame(Mat &frame, LED &leds) {
         getAvgColorForFrame(blurImg, pointTL, pointBR, color);
         leds.top.setLed(s, color);
         outColor = leds.top.getLed(s);
-        rectangle(frame, pointTL, pointBR, outColor, -1);
-
+        if (USE_DISPLAY) {
+            rectangle(frame, pointTL, pointBR, outColor, -1);
+        }
 
         pointTL = Point(
             startX + (s*squareWidth),
@@ -283,7 +284,9 @@ int processFrame(Mat &frame, LED &leds) {
         getAvgColorForFrame(blurImg, pointTL, pointBR, color);
         leds.bottom.setLed(s, color);
         outColor = leds.bottom.getLed(s);
-        rectangle(frame, pointTL, pointBR, outColor, -1);
+        if (USE_DISPLAY) {
+            rectangle(frame, pointTL, pointBR, outColor, -1);
+        }
     }
 
     for (int s=0; s<leds.left.count; s++) {
@@ -303,7 +306,9 @@ int processFrame(Mat &frame, LED &leds) {
         getAvgColorForFrame(blurImg, pointTL, pointBR, color);
         leds.left.setLed(s, color);
         outColor = leds.left.getLed(s);
-        rectangle(frame, pointTL, pointBR, outColor, -1);
+        if (USE_DISPLAY) {
+            rectangle(frame, pointTL, pointBR, outColor, -1);
+        }
 
         pointTL = Point(
             VIDEO_FEED_WIDTH - (squareWidth*RECTANGLE_SPREAD_MULTIPLIER),
@@ -317,7 +322,9 @@ int processFrame(Mat &frame, LED &leds) {
         getAvgColorForFrame(blurImg, pointTL, pointBR, color);
         leds.right.setLed(s, color);
         outColor = leds.right.getLed(s);
-        rectangle(frame, pointTL, pointBR, outColor, -1);
+        if (USE_DISPLAY) {
+            rectangle(frame, pointTL, pointBR, outColor, -1);
+        }
     }
 
     bool result = leds.sendLEDs();
@@ -342,10 +349,9 @@ int processFrame(Mat &frame, LED &leds) {
                 (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+15
             ),
             FONT_HERSHEY_PLAIN, 0.75, color, 1);
-    }
 
-    imshow("feed", frame);
-    //imshow("blur", blurImg);
+        imshow("feed", frame);
+    }
 
     char key = (char)waitKey(1);
     if (key == 'q') {
@@ -353,9 +359,6 @@ int processFrame(Mat &frame, LED &leds) {
     }
 
     return 1;
-}
-
-void test() {
 }
 
 void setupEnvironment() {
@@ -410,10 +413,8 @@ int main(int argc, char **argv) {
 
             while (true) {
                 frame = cap.grab();
-                if (frame.empty()) {
-                    break;
-                }
                 int out = processFrame(frame, leds);
+                usleep(10000);
                 if (out == -1) {
                     break;
                 }
