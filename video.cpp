@@ -26,12 +26,12 @@ const bool USE_CAMERA = true;
 
 const char VIDEO_LOC[] = "bob.mov";
 const int FRAMERATE = 12;
-const int VIDEO_FEED_WIDTH = 640; //pixels
-const int VIDEO_FEED_HEIGHT = 480; //pixels
+const int VIDEO_FEED_WIDTH = 320; //pixels
+const int VIDEO_FEED_HEIGHT = 240; //pixels
 
 const int NUM_LEDS_HORIZ = 52;
 const int NUM_LEDS_VERT  = 28;
-const int BLUR_AMT = 13; //Must be an odd number
+const int BLUR_AMT = 11; //Must be an odd number
 //amount to go "inwards" multiplied by current rectangle width or height
 const int RECTANGLE_SPREAD_MULTIPLIER = 4;
 const int LED_MIN_CUTOFF = 35; //min value out of 255
@@ -41,7 +41,7 @@ const int FADECANDY_MAX_LEDSPEROUT = 64;
 const char OPC_SOCKET_HOST[] = "127.0.0.1";
 const int OPC_SOCKET_PORT = 7890;
 
-const bool USE_DISPLAY = true;
+const bool USE_DISPLAY = false;
 const bool RESIZE_INPUT = false;
 
 int squareWidth, squareHeight;
@@ -414,7 +414,7 @@ int main(int argc, char **argv) {
             while (true) {
                 frame = cap.grab();
                 int out = processFrame(frame, leds);
-                usleep(10000);
+                usleep(1000);
                 if (out == -1) {
                     break;
                 }
