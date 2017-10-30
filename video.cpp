@@ -22,7 +22,7 @@ using namespace cv;
 using namespace std;
 
 //If a<b, return c. Else return a
-#define GREATER_THAN_ELSE(a,b,c) (((a)<(b))?(a):(c))
+#define GREATER_THAN_ELSE(a,b,c) (((a)>(b))?(a):(c))
 
 const bool USE_CAMERA = true;
 
