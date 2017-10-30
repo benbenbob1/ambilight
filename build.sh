@@ -1,1 +1,1 @@
-g++ $(pkg-config --cflags --libs opencv) video.cpp -o video
+g++ $(pkg-config --libs --cflags opencv) video.cpp -o video

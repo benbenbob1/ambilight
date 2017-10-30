@@ -22,7 +22,7 @@ using namespace cv;
 using namespace std;
 
 //If a<b, return c. Else return a
-#define GREATER_THAN_ELSE(a,b,c) (((a)<(b))?((a):(c)))
+#define GREATER_THAN_ELSE(a,b,c) (((a)<(b))?(a):(c))
 
 const bool USE_CAMERA = true;
 
@@ -348,7 +348,7 @@ int processFrame(Mat &frame, LED &leds) {
             ),
             FONT_HERSHEY_PLAIN, 0.75, color, 1);
 
-        cvtColor(frame, frame, BGR2RGB);
+        cvtColor(frame, frame, COLOR_BGR2RGB);
         imshow("feed", frame);
 
         char key = (char)waitKey(1);
