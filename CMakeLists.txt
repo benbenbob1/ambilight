@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 SET(COMPILE_DEFINITIONS -Werror)
+SET(CMAKE_BUILD_TYPE Debug)
 find_package( OpenCV REQUIRED )
 include_directories(/opt/vc/include)
 include_directories(/opt/vc/include/interface/vcos/pthreads)

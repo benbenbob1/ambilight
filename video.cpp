@@ -21,6 +21,8 @@
 using namespace cv;
 using namespace std;
 
+//If a<b, return c. Else return a
+#define GREATER_THAN_ELSE(a,b,c) (((a)<(b))?((a):(c)))
 
 const bool USE_CAMERA = true;
 
@@ -43,6 +45,7 @@ const int OPC_SOCKET_PORT = 7890;
 
 const bool USE_DISPLAY = false;
 const bool RESIZE_INPUT = false;
+const bool VIBRANT_MODE = true;
 
 int squareWidth, squareHeight;
 int startX, startY;
@@ -137,14 +140,6 @@ public:
         printf("Connection was %s\n", (result?"successful":"unsuccessful"));;
     }
 
-    /*
-    ~LED() {
-        if (opc.isConnected()) {
-            opc.closeSocket();
-        }
-    }
-    */
-
     bool ledsConnected() {
         return opc.isConnected();
     }
@@ -217,9 +212,9 @@ void getAvgColorForFrame(Mat &frame,
         sumColB += sumRowB / pixWidth;
     }
 
-    outColor[0] = sumColR / pixHeight;
-    outColor[1] = sumColG / pixHeight;
-    outColor[2] = sumColB / pixHeight;
+    outColor[0] = GREATER_THAN_ELSE((sumColR / pixHeight),LED_MIN_CUTOFF,0);
+    outColor[1] = GREATER_THAN_ELSE((sumColG / pixHeight),LED_MIN_CUTOFF,0);
+    outColor[2] = GREATER_THAN_ELSE((sumColB / pixHeight),LED_MIN_CUTOFF,0);
 }
 
 int processFrame(Mat &frame, LED &leds) {
@@ -267,8 +262,9 @@ int processFrame(Mat &frame, LED &leds) {
 
         getAvgColorForFrame(blurImg, pointTL, pointBR, color);
         leds.top.setLed(s, color);
-        outColor = leds.top.getLed(s);
+
         if (USE_DISPLAY) {
+            outColor = leds.top.getLed(s);
             rectangle(frame, pointTL, pointBR, outColor, -1);
         }
 
@@ -283,8 +279,8 @@ int processFrame(Mat &frame, LED &leds) {
 
         getAvgColorForFrame(blurImg, pointTL, pointBR, color);
         leds.bottom.setLed(s, color);
-        outColor = leds.bottom.getLed(s);
         if (USE_DISPLAY) {
+            outColor = leds.bottom.getLed(s);
             rectangle(frame, pointTL, pointBR, outColor, -1);
         }
     }
@@ -305,8 +301,9 @@ int processFrame(Mat &frame, LED &leds) {
 
         getAvgColorForFrame(blurImg, pointTL, pointBR, color);
         leds.left.setLed(s, color);
-        outColor = leds.left.getLed(s);
+
         if (USE_DISPLAY) {
+            outColor = leds.left.getLed(s);
             rectangle(frame, pointTL, pointBR, outColor, -1);
         }
 
@@ -321,8 +318,9 @@ int processFrame(Mat &frame, LED &leds) {
 
         getAvgColorForFrame(blurImg, pointTL, pointBR, color);
         leds.right.setLed(s, color);
-        outColor = leds.right.getLed(s);
+
         if (USE_DISPLAY) {
+            outColor = leds.right.getLed(s);
             rectangle(frame, pointTL, pointBR, outColor, -1);
         }
     }
@@ -350,13 +348,16 @@ int processFrame(Mat &frame, LED &leds) {
             ),
             FONT_HERSHEY_PLAIN, 0.75, color, 1);
 
+        cvtColor(frame, frame, BGR2RGB);
         imshow("feed", frame);
+
+        char key = (char)waitKey(1);
+        if (key == 'q') {
+            return -1;
+        }
     }
 
-    char key = (char)waitKey(1);
-    if (key == 'q') {
-        return -1;
-    }
+
 
     return 1;
 }
