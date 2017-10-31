@@ -50,6 +50,30 @@ const bool VIBRANT_MODE = true;
 int squareWidth, squareHeight;
 int startX, startY;
 
+
+/* TODO: changeme */
+int bright, contrast, sat, iso;
+raspicam::RaspiCam_Cv rpicam;
+void onSat(int, void* ){
+    rpicam.set(CV_CAP_PROP_SATURATION, sat);
+}
+void onISO(int, void* ){
+    rpicam.set(CV_CAP_PROP_GAIN, iso);
+}
+void onCont(int, void* ){
+    rpicam.set(CV_CAP_PROP_CONTRAST, onCont);
+}
+void onBright(int, void* ){
+    rpicam.set(CV_CAP_PROP_BRIGHTNESS, bright);
+}
+
+void onSat(int, void* ){
+    cap.setSaturation(sat-100);
+}
+void onISO(int, void* ){
+    cap.setISO(iso+100);
+}
+
 class LEDStrip {
 public:
     int fcOffset;
@@ -392,9 +416,14 @@ int main(int argc, char **argv) {
 
     if (IS_PI && USE_CAMERA) {
         #ifdef __arm__
-            raspicam::RaspiCam_Cv rpicam;
             printf("RaspiCam video feed opening...\n");
             if (USE_CAMERA) {
+
+                createTrackbar("brightness","feed",&bright,100,onBright);
+                createTrackbar("contrast",  "feed",&contrast,100,onCont);
+                createTrackbar("saturation","feed",&sat,100,onSat);
+                createTrackbar("ISO",       "feed",&iso,100,onISO);
+
                 //Capture 3 bits per pixel
                 rpicam.set( CV_CAP_PROP_FORMAT, CV_8UC3 );
                 rpicam.set( CV_CAP_PROP_FRAME_WIDTH, VIDEO_FEED_WIDTH );
