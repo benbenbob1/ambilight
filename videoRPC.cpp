@@ -61,7 +61,7 @@ void onISO(int, void* ){
     rpicam.set(CV_CAP_PROP_GAIN, iso);
 }
 void onCont(int, void* ){
-    rpicam.set(CV_CAP_PROP_CONTRAST, onCont);
+    rpicam.set(CV_CAP_PROP_CONTRAST, contrast);
 }
 void onBright(int, void* ){
     rpicam.set(CV_CAP_PROP_BRIGHTNESS, bright);
