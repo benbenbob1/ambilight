@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
-#include <opencv2/cuda.hpp>
+#include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <highgui.h>
 #include <iostream>
@@ -20,6 +20,7 @@
 #endif
 
 using namespace cv;
+using namespace cv::cuda;
 using namespace std;
 
 //If a<b, return c. Else return a
