@@ -52,7 +52,7 @@ int startX, startY;
 
 
 /* TODO: changeme */
-int bright = 50, contrast = 50, sat = 80, iso = 50, redB = 100, blueB = 100;
+int bright = 50, contrast = 50, sat = 80, iso = 50, expo = 50, redB = 100, blueB = 100;
 raspicam::RaspiCam_Cv rpicam;
 void onSat(int, void* ){
     rpicam.set(CV_CAP_PROP_SATURATION, sat);
@@ -62,6 +62,9 @@ void onISO(int, void* ){
 }
 void onCont(int, void* ){
     rpicam.set(CV_CAP_PROP_CONTRAST, contrast);
+}
+void onExp(int, void* ){
+    rpicam.set(CV_CAP_PROP_EXPOSURE, expo);
 }
 void onBright(int, void* ){
     rpicam.set(CV_CAP_PROP_BRIGHTNESS, bright);
@@ -420,6 +423,7 @@ int main(int argc, char **argv) {
                 createTrackbar("contrast",  "feed",&contrast,100,onCont);
                 createTrackbar("saturation","feed",&sat,100,onSat);
                 createTrackbar("ISO",       "feed",&iso,100,onISO);
+                createTrackbar("exposure",  "feed",&expo,100,onExp);
                 createTrackbar("Red",       "feed",&redB,100,onBalance);
                 createTrackbar("Blue",      "feed",&blueB,100,onBalance);
 
@@ -431,6 +435,7 @@ int main(int argc, char **argv) {
                 rpicam.set( CV_CAP_PROP_BRIGHTNESS, bright );
                 rpicam.set( CV_CAP_PROP_CONTRAST, contrast );
                 rpicam.set( CV_CAP_PROP_GAIN, iso );
+                rpicam.set( CV_CAP_PROP_EXPOSURE, expo );
                 rpicam.set( CV_CAP_PROP_SATURATION, sat );
                 rpicam.set( CV_CAP_PROP_WHITE_BALANCE_RED_V, redB );
                 rpicam.set( CV_CAP_PROP_WHITE_BALANCE_BLUE_U, blueB );
