@@ -52,7 +52,7 @@ int startX, startY;
 
 
 /* TODO: changeme */
-int bright, contrast, sat, iso;
+int bright = 50, contrast = 50, sat = 80, iso = 50, redB = 100, blueB = 100;
 raspicam::RaspiCam_Cv rpicam;
 void onSat(int, void* ){
     rpicam.set(CV_CAP_PROP_SATURATION, sat);
@@ -65,6 +65,10 @@ void onCont(int, void* ){
 }
 void onBright(int, void* ){
     rpicam.set(CV_CAP_PROP_BRIGHTNESS, bright);
+}
+void onBalance(int, void* ){
+    rpicam.set( CV_CAP_PROP_WHITE_BALANCE_RED_V, redB );
+    rpicam.set( CV_CAP_PROP_WHITE_BALANCE_BLUE_U, blueB );
 }
 
 class LEDStrip {
@@ -416,14 +420,20 @@ int main(int argc, char **argv) {
                 createTrackbar("contrast",  "feed",&contrast,100,onCont);
                 createTrackbar("saturation","feed",&sat,100,onSat);
                 createTrackbar("ISO",       "feed",&iso,100,onISO);
+                createTrackbar("Red",       "feed",&redB,100,onBalance);
+                createTrackbar("Blue",      "feed",&blueB,100,onBalance);
 
                 //Capture 3 bits per pixel
                 rpicam.set( CV_CAP_PROP_FORMAT, CV_8UC3 );
                 rpicam.set( CV_CAP_PROP_FRAME_WIDTH, VIDEO_FEED_WIDTH );
                 rpicam.set( CV_CAP_PROP_FRAME_HEIGHT, VIDEO_FEED_HEIGHT );
                 rpicam.set( CV_CAP_PROP_FPS, FRAMERATE );
-                rpicam.set( CV_CAP_PROP_WHITE_BALANCE_RED_V, 100 );
-                rpicam.set( CV_CAP_PROP_WHITE_BALANCE_BLUE_U, 100 );
+                rpicam.set( CV_CAP_PROP_BRIGHTNESS, bright );
+                rpicam.set( CV_CAP_PROP_CONTRAST, contrast );
+                rpicam.set( CV_CAP_PROP_GAIN, iso );
+                rpicam.set( CV_CAP_PROP_SATURATION, sat );
+                rpicam.set( CV_CAP_PROP_WHITE_BALANCE_RED_V, redB );
+                rpicam.set( CV_CAP_PROP_WHITE_BALANCE_BLUE_U, blueB );
                 rpicam.set( CV_CAP_PROP_MODE, 6 );
                 sleep(1);
 
