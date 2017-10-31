@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
+#include <opencv2/cuda.hpp>
 #include <opencv2/highgui.hpp>
 #include <highgui.h>
 #include <iostream>
@@ -52,7 +53,7 @@ int startX, startY;
 
 
 /* TODO: changeme */
-int bright = 50, contrast = 50, sat = 80, iso = 50, expo = 50, redB = 100, blueB = 100;
+int bright = 50, contrast = 50, sat = 55, iso = 50, expo = 16, redB = 0, blueB = 100;
 raspicam::RaspiCam_Cv rpicam;
 void onSat(int, void* ){
     rpicam.set(CV_CAP_PROP_SATURATION, sat);
@@ -252,6 +253,9 @@ int processFrame(Mat &frame, LED &leds) {
         resize(frame, frame, Size(VIDEO_FEED_WIDTH, VIDEO_FEED_HEIGHT));
     }
 
+    CLAHE clahe = createCLAHE(2.0, Size(8.0, 8.0));
+    Mat newFrame = clahe.apply(frame);
+
     Mat blurImg;
     blur(
         frame, blurImg,
@@ -374,14 +378,13 @@ int processFrame(Mat &frame, LED &leds) {
 
         //cvtColor(frame, frame, COLOR_BGR2RGB);
         imshow("feed", frame);
+        imshow("clahe", newFrame);
 
         char key = (char)waitKey(1);
         if (key == 'q') {
             return -1;
         }
     }
-
-
 
     return 1;
 }
