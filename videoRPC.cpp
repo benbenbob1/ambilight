@@ -414,9 +414,10 @@ int main(int argc, char **argv) {
             printf("RaspiCam video feed opened\n");
 
             while (true) {
-                frame = rpicam.grab();
+                rpicam.grab();
+                rpicam.retrieve(frame);
                 int out = processFrame(frame, leds);
-                usleep(1000);
+                //usleep(1000);
                 if (out == -1) {
                     break;
                 }
