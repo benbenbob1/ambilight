@@ -67,13 +67,6 @@ void onBright(int, void* ){
     rpicam.set(CV_CAP_PROP_BRIGHTNESS, bright);
 }
 
-void onSat(int, void* ){
-    cap.setSaturation(sat-100);
-}
-void onISO(int, void* ){
-    cap.setISO(iso+100);
-}
-
 class LEDStrip {
 public:
     int fcOffset;
