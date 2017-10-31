@@ -203,9 +203,9 @@ void getAvgColorForFrame(Mat &frame,
         double sumRowR = 0.0, sumRowG = 0.0, sumRowB = 0.0;
         for (int y=topLeftPoint.y; y<bottomRightPoint.y; y++) {
             Vec3b px = frame.at<Vec3b>(y,x);
-            sumRowR += px[2];
+            sumRowR += px[0];
             sumRowG += px[1];
-            sumRowB += px[0];
+            sumRowB += px[2];
         }
         sumColR += sumRowR / pixWidth;
         sumColG += sumRowG / pixWidth;
@@ -348,7 +348,7 @@ int processFrame(Mat &frame, LED &leds) {
             ),
             FONT_HERSHEY_PLAIN, 0.75, color, 1);
 
-        cvtColor(frame, frame, COLOR_BGR2RGB);
+        //cvtColor(frame, frame, COLOR_BGR2RGB);
         imshow("feed", frame);
 
         char key = (char)waitKey(1);
@@ -400,6 +400,8 @@ int main(int argc, char **argv) {
                 rpicam.set( CV_CAP_PROP_FRAME_WIDTH, VIDEO_FEED_WIDTH );
                 rpicam.set( CV_CAP_PROP_FRAME_HEIGHT, VIDEO_FEED_HEIGHT );
                 rpicam.set( CV_CAP_PROP_FPS, FRAMERATE );
+                rpicam.set( CV_CAP_PROP_WHITE_BALANCE_RED_V, 100 );
+                rpicam.set( CV_CAP_PROP_WHITE_BALANCE_BLUE_U, 100 );
                 rpicam.set( CV_CAP_PROP_MODE, 6 );
                 sleep(1);
 
@@ -417,7 +419,7 @@ int main(int argc, char **argv) {
                 rpicam.grab();
                 rpicam.retrieve(frame);
                 int out = processFrame(frame, leds);
-                //usleep(1000);
+                usleep(1000);
                 if (out == -1) {
                     break;
                 }
