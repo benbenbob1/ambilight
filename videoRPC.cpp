@@ -170,7 +170,7 @@ public:
     }
 
     //Sends over the LED buffers
-    bool sendLEDs() {
+    bool sendLEDs(Vec3b minColor) {
         int ledCount = 0;
         ledCount += top.putLEDs(&leds);
         ledCount += bottom.putLEDs(&leds);
@@ -237,23 +237,16 @@ void getAvgColorForFrame(Mat &frame,
         sumColB += sumRowB / pixWidth;
     }
 
-    outColor[0] = GREATER_THAN_ELSE((sumColR / pixHeight),LED_MIN_CUTOFF,0);
-    outColor[1] = GREATER_THAN_ELSE((sumColG / pixHeight),LED_MIN_CUTOFF,0);
-    outColor[2] = GREATER_THAN_ELSE((sumColB / pixHeight),LED_MIN_CUTOFF,0);
+    outColor[0] = (int)(sumColR / pixHeight);
+    outColor[1] = (int)(sumColG / pixHeight);
+    outColor[2] = (int)(sumColB / pixHeight);
 }
 
-/*
-struct Operator {
-    //HLS
-    void operator()(Vec3b &pixel, const int *position) const {
-        double half = (double)(pixel[1] / 128.0);
-        if (pixel[1] < 128) {
-            pixel[2] *= (int)(255 * (half*pixel[1]));
-        } else {
-            pixel[2] = (int)(255 * ((-half*pixel[1])+2));
-        }
+void addToColorSum(Vec3f &colorSum, Vec3b color) {
+    for (int c=0; c<3; c++) {
+        colorSum[c] += color[c];
     }
-};*/
+}
 
 int processFrame(Mat &frame, LED &leds) {
     if (frame.empty()) {
@@ -265,40 +258,6 @@ int processFrame(Mat &frame, LED &leds) {
     if (RESIZE_INPUT) {
         resize(frame, frame, Size(VIDEO_FEED_WIDTH, VIDEO_FEED_HEIGHT));
     }
-
-    /*Mat hsvFrame;
-    cvtColor(frame, hsvFrame, CV_RGB2HSV);
-    for (int p=0; p<3; p++) { //3 planes of color (RGB/HSV)
-        sumHSV[p] = 0.0;
-        avgHSV[p] = 0;
-        outRGBMin[p] = 0;
-    }
-    hsvFrame.forEach<Vec3b>(Operator());
-    Size matSize = frame.size();
-    for (int p=0; p<3; p++) {
-        avgHSV[p] = sumHSV[p] / (matSize.height * matSize.width);
-    }
-    avgHSV[2] *= 0.5;
-    Mat3b avgHSVMat(avgHSV);
-    Mat3b outRGBMinMat;
-    cvtColor(avgHSVMat, outRGBMinMat, CV_HSV2RGB);
-    for (int p=0; p<3; p++) {
-        outRGBMin[p] = (int)outRGBMinMat[p];
-    }*/
-
-    //Mat cvtd;
-    //cvtColor(hsvFrame, cvtd, CV_HSV2RGB);
-
-    /*vector<Mat> hsvFramePlanes(3);
-    split(labFrame, hsvFramePlanes);
-
-
-
-    newFrame.copyTo(labFramePlanes[0]);
-    merge(labFramePlanes, labFrame);
-
-    Mat claheImg;
-    cvtColor(labFrame, claheImg, CV_Lab2RGB);*/
 
     Mat blurImg;
     blur(
@@ -318,7 +277,13 @@ int processFrame(Mat &frame, LED &leds) {
     Vec3b color, outColor;
     Point pointTL, pointBR;
 
-    for (int s=0; s<leds.top.count; s++) {
+    int cols = leds.top.count;
+    int rows = leds.left.count;
+
+    Vec3f colorSum(0.0, 0.0, 0.0);
+    int totalLeds = (cols*2)+(rows*2);
+
+    for (int s=0; s<cols; s++) {
         pointTL = Point(
             startX + (s*squareWidth),
             0
@@ -334,6 +299,7 @@ int processFrame(Mat &frame, LED &leds) {
 
         getAvgColorForFrame(blurImg, pointTL, pointBR, color);
         leds.top.setLed(s, color);
+        addToColorSum(colorSum, color);
 
         if (USE_DISPLAY) {
             outColor = leds.top.getLed(s);
@@ -351,13 +317,15 @@ int processFrame(Mat &frame, LED &leds) {
 
         getAvgColorForFrame(blurImg, pointTL, pointBR, color);
         leds.bottom.setLed(s, color);
+        addToColorSum(colorSum, color);
+
         if (USE_DISPLAY) {
             outColor = leds.bottom.getLed(s);
             rectangle(frame, pointTL, pointBR, outColor, -1);
         }
     }
 
-    for (int s=0; s<leds.left.count; s++) {
+    for (int s=0; s<rows; s++) {
         pointTL = Point(
             0,
             startY + (s*squareHeight)
@@ -373,6 +341,7 @@ int processFrame(Mat &frame, LED &leds) {
 
         getAvgColorForFrame(blurImg, pointTL, pointBR, color);
         leds.left.setLed(s, color);
+        addToColorSum(colorSum, color);
 
         if (USE_DISPLAY) {
             outColor = leds.left.getLed(s);
@@ -390,6 +359,7 @@ int processFrame(Mat &frame, LED &leds) {
 
         getAvgColorForFrame(blurImg, pointTL, pointBR, color);
         leds.right.setLed(s, color);
+        addToColorSum(colorSum, color);
 
         if (USE_DISPLAY) {
             outColor = leds.right.getLed(s);
@@ -397,11 +367,16 @@ int processFrame(Mat &frame, LED &leds) {
         }
     }
 
-    bool result = leds.sendLEDs();
-    //printf("Writing leds was %ssuccessful\n", result?"":"un");
+    Vec3b avgColor;
+    for (int c=0; c<3; c++) {
+        avgColor[c] = (unsigned char)(colorSum[c] / totalLeds);
+    }
+    bool result = leds.sendLEDs(avgColor);
 
     if (USE_DISPLAY) {
-        Scalar color = Scalar(255, 0, 0); //bgr
+
+        //Scalar color = Scalar(255, 0, 0); //bgr
+        Scalar color = Scalar(avgColor[0], avgColor[1], avgColor[2]); //bgr
         putText(frame, "Press q to quit", Point(
                 (squareWidth*RECTANGLE_SPREAD_MULTIPLIER)+5,
                 (squareHeight*RECTANGLE_SPREAD_MULTIPLIER)+5
@@ -420,7 +395,6 @@ int processFrame(Mat &frame, LED &leds) {
             ),
             FONT_HERSHEY_PLAIN, 0.75, color, 1);
 
-        //cvtColor(frame, frame, COLOR_BGR2RGB);
         imshow("feed", frame);
 
         char key = (char)waitKey(1);
@@ -465,12 +439,14 @@ int main(int argc, char **argv) {
             printf("RaspiCam video feed opening...\n");
             if (USE_CAMERA) {
 
-                createTrackbar("brightness","feed",&bright,100,onBright);
-                createTrackbar("contrast",  "feed",&contrast,100,onCont);
-                createTrackbar("saturation","feed",&sat,100,onSat);
-                createTrackbar("ISO",       "feed",&iso,100,onISO);
-                createTrackbar("exposure",  "feed",&expo,100,onExp);
-                createTrackbar("Gamma (0.5-3.5)","feed",&gammaInt,100,onGamma);
+                if (USE_DISPLAY) {
+                    createTrackbar("brightness","feed",&bright,100,onBright);
+                    createTrackbar("contrast",  "feed",&contrast,100,onCont);
+                    createTrackbar("saturation","feed",&sat,100,onSat);
+                    createTrackbar("ISO",       "feed",&iso,100,onISO);
+                    createTrackbar("exposure",  "feed",&expo,100,onExp);
+                    createTrackbar("Gamma (0.5-3.5)","feed",&gammaInt,100,onGamma);
+                }
 
                 //Capture 3 bits per pixel
                 rpicam.set( CV_CAP_PROP_FORMAT, CV_8UC3 );
