@@ -44,7 +44,7 @@ const int FADECANDY_MAX_LEDSPEROUT = 64;
 const char OPC_SOCKET_HOST[] = "127.0.0.1";
 const int OPC_SOCKET_PORT = 7890;
 
-const bool USE_DISPLAY = false;
+const bool USE_DISPLAY = true;
 const bool RESIZE_INPUT = false;
 const bool VIBRANT_MODE = true;
 
