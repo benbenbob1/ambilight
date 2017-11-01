@@ -20,7 +20,6 @@
 #endif
 
 using namespace cv;
-using namespace cv::cuda;
 using namespace std;
 
 //If a<b, return c. Else return a
@@ -45,16 +44,20 @@ const int FADECANDY_MAX_LEDSPEROUT = 64;
 const char OPC_SOCKET_HOST[] = "127.0.0.1";
 const int OPC_SOCKET_PORT = 7890;
 
-const bool USE_DISPLAY = true;
+const bool USE_DISPLAY = false;
 const bool RESIZE_INPUT = false;
 const bool VIBRANT_MODE = true;
 
 int squareWidth, squareHeight;
 int startX, startY;
 
+Mat3f sumHSV[3];
+Mat3b avgHSV[3];
+int outRGBMin[3];
 
 /* TODO: changeme */
 int bright = 50, contrast = 50, sat = 55, iso = 50, expo = 16, redB = 0, blueB = 100;
+
 raspicam::RaspiCam_Cv rpicam;
 void onSat(int, void* ){
     rpicam.set(CV_CAP_PROP_SATURATION, sat);
@@ -70,10 +73,6 @@ void onExp(int, void* ){
 }
 void onBright(int, void* ){
     rpicam.set(CV_CAP_PROP_BRIGHTNESS, bright);
-}
-void onBalance(int, void* ){
-    rpicam.set( CV_CAP_PROP_WHITE_BALANCE_RED_V, redB );
-    rpicam.set( CV_CAP_PROP_WHITE_BALANCE_BLUE_U, blueB );
 }
 
 class LEDStrip {
@@ -243,6 +242,19 @@ void getAvgColorForFrame(Mat &frame,
     outColor[2] = GREATER_THAN_ELSE((sumColB / pixHeight),LED_MIN_CUTOFF,0);
 }
 
+/*
+struct Operator {
+    //HLS
+    void operator()(Vec3b &pixel, const int *position) const {
+        double half = (double)(pixel[1] / 128.0);
+        if (pixel[1] < 128) {
+            pixel[2] *= (int)(255 * (half*pixel[1]));
+        } else {
+            pixel[2] = (int)(255 * ((-half*pixel[1])+2));
+        }
+    }
+};*/
+
 int processFrame(Mat &frame, LED &leds) {
     if (frame.empty()) {
         return 0;
@@ -254,8 +266,39 @@ int processFrame(Mat &frame, LED &leds) {
         resize(frame, frame, Size(VIDEO_FEED_WIDTH, VIDEO_FEED_HEIGHT));
     }
 
-    CLAHE clahe = createCLAHE(2.0, Size(8.0, 8.0));
-    Mat newFrame = clahe.apply(frame);
+    /*Mat hsvFrame;
+    cvtColor(frame, hsvFrame, CV_RGB2HSV);
+    for (int p=0; p<3; p++) { //3 planes of color (RGB/HSV)
+        sumHSV[p] = 0.0;
+        avgHSV[p] = 0;
+        outRGBMin[p] = 0;
+    }
+    hsvFrame.forEach<Vec3b>(Operator());
+    Size matSize = frame.size();
+    for (int p=0; p<3; p++) {
+        avgHSV[p] = sumHSV[p] / (matSize.height * matSize.width);
+    }
+    avgHSV[2] *= 0.5;
+    Mat3b avgHSVMat(avgHSV);
+    Mat3b outRGBMinMat;
+    cvtColor(avgHSVMat, outRGBMinMat, CV_HSV2RGB);
+    for (int p=0; p<3; p++) {
+        outRGBMin[p] = (int)outRGBMinMat[p];
+    }*/
+
+    //Mat cvtd;
+    //cvtColor(hsvFrame, cvtd, CV_HSV2RGB);
+
+    /*vector<Mat> hsvFramePlanes(3);
+    split(labFrame, hsvFramePlanes);
+
+
+
+    newFrame.copyTo(labFramePlanes[0]);
+    merge(labFramePlanes, labFrame);
+
+    Mat claheImg;
+    cvtColor(labFrame, claheImg, CV_Lab2RGB);*/
 
     Mat blurImg;
     blur(
@@ -379,7 +422,6 @@ int processFrame(Mat &frame, LED &leds) {
 
         //cvtColor(frame, frame, COLOR_BGR2RGB);
         imshow("feed", frame);
-        imshow("clahe", newFrame);
 
         char key = (char)waitKey(1);
         if (key == 'q') {
@@ -428,8 +470,7 @@ int main(int argc, char **argv) {
                 createTrackbar("saturation","feed",&sat,100,onSat);
                 createTrackbar("ISO",       "feed",&iso,100,onISO);
                 createTrackbar("exposure",  "feed",&expo,100,onExp);
-                createTrackbar("Red",       "feed",&redB,100,onBalance);
-                createTrackbar("Blue",      "feed",&blueB,100,onBalance);
+                createTrackbar("Gamma (0.5-3.5)","feed",&gammaInt,100,onGamma);
 
                 //Capture 3 bits per pixel
                 rpicam.set( CV_CAP_PROP_FORMAT, CV_8UC3 );
@@ -460,7 +501,7 @@ int main(int argc, char **argv) {
                 rpicam.grab();
                 rpicam.retrieve(frame);
                 int out = processFrame(frame, leds);
-                usleep(1000);
+                usleep(1500);
                 if (out == -1) {
                     break;
                 }
