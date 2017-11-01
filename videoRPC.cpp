@@ -58,22 +58,24 @@ int outRGBMin[3];
 /* TODO: changeme */
 int bright = 50, contrast = 50, sat = 55, iso = 50, expo = 16, redB = 0, blueB = 100;
 
-raspicam::RaspiCam_Cv rpicam;
-void onSat(int, void* ){
-    rpicam.set(CV_CAP_PROP_SATURATION, sat);
-}
-void onISO(int, void* ){
-    rpicam.set(CV_CAP_PROP_GAIN, iso);
-}
-void onCont(int, void* ){
-    rpicam.set(CV_CAP_PROP_CONTRAST, contrast);
-}
-void onExp(int, void* ){
-    rpicam.set(CV_CAP_PROP_EXPOSURE, expo);
-}
-void onBright(int, void* ){
-    rpicam.set(CV_CAP_PROP_BRIGHTNESS, bright);
-}
+#ifdef __arm__
+    raspicam::RaspiCam_Cv rpicam;
+    void onSat(int, void* ){
+        rpicam.set(CV_CAP_PROP_SATURATION, sat);
+    }
+    void onISO(int, void* ){
+        rpicam.set(CV_CAP_PROP_GAIN, iso);
+    }
+    void onCont(int, void* ){
+        rpicam.set(CV_CAP_PROP_CONTRAST, contrast);
+    }
+    void onExp(int, void* ){
+        rpicam.set(CV_CAP_PROP_EXPOSURE, expo);
+    }
+    void onBright(int, void* ){
+        rpicam.set(CV_CAP_PROP_BRIGHTNESS, bright);
+    }
+#endif
 
 class LEDStrip {
 public:
