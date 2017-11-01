@@ -460,6 +460,7 @@ int main(int argc, char **argv) {
                 rpicam.set( CV_CAP_PROP_WHITE_BALANCE_RED_V, redB );
                 rpicam.set( CV_CAP_PROP_WHITE_BALANCE_BLUE_U, blueB );
                 rpicam.set( CV_CAP_PROP_MODE, 6 );
+                rpicam._impl.setAWB(RASPICAM_AWB_OFF);
                 sleep(1);
 
                 if (!rpicam.open()) {
