@@ -445,7 +445,6 @@ int main(int argc, char **argv) {
                     createTrackbar("saturation","feed",&sat,100,onSat);
                     createTrackbar("ISO",       "feed",&iso,100,onISO);
                     createTrackbar("exposure",  "feed",&expo,100,onExp);
-                    createTrackbar("Gamma (0.5-3.5)","feed",&gammaInt,100,onGamma);
                 }
 
                 //Capture 3 bits per pixel
