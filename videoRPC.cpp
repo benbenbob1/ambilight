@@ -404,9 +404,8 @@ int processFrame(Mat &frame, LED &leds) {
         avgColor[2] = LED_MIN_CUTOFF;
     }
 
-    }
     bool result = leds.sendLEDs(avgColor);
-
+    
     if (USE_DISPLAY) {
 
         //Scalar color = Scalar(255, 0, 0); //bgr
