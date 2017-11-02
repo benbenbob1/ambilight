@@ -225,6 +225,11 @@ public:
             0, opc.SET_PIXEL_COLORS, maxLedBufferSize
         );
 
+        uint8_t *dest = OPCClient::Header::view(frameBuffer).data();
+        for (int l=0; l<maxLedBufferSize; l++) {
+            *(dest++) = 0;
+        }
+
         bool resolve = opc.resolve(OPC_SOCKET_HOST, OPC_SOCKET_PORT);
 
         if (resolve) {
