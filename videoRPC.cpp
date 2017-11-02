@@ -22,9 +22,6 @@
 using namespace cv;
 using namespace std;
 
-//If a<b, return c. Else return a
-#define GREATER_THAN_ELSE(a,b,c) (((a)>(b))?(a):(c))
-
 const bool USE_CAMERA = true;
 
 const char VIDEO_LOC[] = "bob.mov";
@@ -34,8 +31,11 @@ const int VIDEO_FEED_HEIGHT = 240; //pixels
 
 const int NUM_LEDS_HORIZ = 52;
 const int NUM_LEDS_VERT  = 28;
-const int BLUR_AMT = 11; //Must be an odd number
-//amount to go "inwards" multiplied by current rectangle width or height
+const int BLUR_AMT = 25; // Must be an odd number
+const int SMOOTH_SPEED = 5; // Number of frames to fade colors over
+// Don't smooth is color difference is over this
+const int SMOOTH_IGNORE_AMT = 50;
+// Amount to go "inwards" multiplied by current rectangle width or height
 const int RECTANGLE_SPREAD_MULTIPLIER = 4;
 const int LED_MIN_CUTOFF = 35; //min value out of 255
 const int FADECANDY_NUM_STRIPS = 3;
@@ -44,9 +44,12 @@ const int FADECANDY_MAX_LEDSPEROUT = 64;
 const char OPC_SOCKET_HOST[] = "127.0.0.1";
 const int OPC_SOCKET_PORT = 7890;
 
-const bool USE_DISPLAY = true;
+const bool USE_DISPLAY = false;
 const bool RESIZE_INPUT = false;
-const bool VIBRANT_MODE = true;
+const bool NO_DARK_SPOTS = false;
+
+//If a<b, return c. Else return a
+#define GREATER_THAN_ELSE(a,b,c) (((a)>(b) && !NO_DARK_SPOTS)?(a):(c))
 
 int squareWidth, squareHeight;
 int startX, startY;
@@ -181,10 +184,16 @@ public:
 
         if (ledsConnected()) {
             uint8_t *dest = OPCClient::Header::view(frameBuffer).data();
+            int c, idx = 0;
+            unsigned char color;
             for (int l=0; l<maxLeds; l++) {
-                *(dest++) = GREATER_THAN_ELSE(leds[l][2], LED_MIN_CUTOFF, minColor[2]);
-                *(dest++) = GREATER_THAN_ELSE(leds[l][1], LED_MIN_CUTOFF, minColor[1]);
-                *(dest++) = GREATER_THAN_ELSE(leds[l][0], LED_MIN_CUTOFF, minColor[0]);
+                for (c=0;c<3;c++) {
+                    color = GREATER_THAN_ELSE(
+                        leds[l][c], LED_MIN_CUTOFF, minColor[c]
+                    );
+                    *(dest+idx) = smooth(color, *(dest+idx));
+                    idx ++;
+                }
             }
             return opc.write(frameBuffer);
         }
@@ -216,6 +225,17 @@ private:
     std::vector<uint8_t> frameBuffer;
     int maxLedBufferSize;
 };
+
+int smooth(int in, int prevValue) {
+    int out;
+    int diff = in - prevValue;
+
+    if (diff > SMOOTH_IGNORE_AMT || diff < -SMOOTH_IGNORE_AMT) {
+        out = in;
+    } else {
+        out = in + ((diff > 0 ? diff : -diff))/smooth);
+    }
+}
 
 void getAvgColorForFrame(Mat &frame,
     Point topLeftPoint, Point bottomRightPoint,
@@ -370,7 +390,9 @@ int processFrame(Mat &frame, LED &leds) {
 
     Vec3b avgColor;
     for (int c=0; c<3; c++) {
-        avgColor[c] = (unsigned char)GREATER_THAN_ELSE((colorSum[c] / totalLeds), LED_MIN_CUTOFF, 0);
+        avgColor[c] = (unsigned char)GREATER_THAN_ELSE(
+            (colorSum[c] / totalLeds), LED_MIN_CUTOFF, 0
+        );
     }
     bool result = leds.sendLEDs(avgColor);
 
@@ -477,7 +499,7 @@ int main(int argc, char **argv) {
                 rpicam.grab();
                 rpicam.retrieve(frame);
                 int out = processFrame(frame, leds);
-                usleep(1500);
+                //usleep(1500);
                 if (out == -1) {
                     break;
                 }
