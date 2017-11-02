@@ -56,7 +56,8 @@ Mat3b avgHSV[3];
 int outRGBMin[3];
 
 /* TODO: changeme */
-int bright = 50, contrast = 50, sat = 55, iso = 50, expo = 16, redB = 0, blueB = 100;
+int bright = 50, contrast = 50, sat = 55, iso = 50, expo = 16;
+int redB = 0, blueB = 100;
 
 #ifdef __arm__
     raspicam::RaspiCam_Cv rpicam;
@@ -124,7 +125,8 @@ public:
 
     //LedsToSet MUST be of length count
     //Returns number of leds set
-    int putLEDs(Vec3b (*allLeds)[FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT]) {
+    int putLEDs(Vec3b (*allLeds)[FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT])
+    {
         int startIdx = (fcOffset*FADECANDY_MAX_LEDSPEROUT)+startIndex;
         int lOffset = 0;
         if (inverted) {
@@ -462,7 +464,6 @@ int main(int argc, char **argv) {
                 rpicam.set( CV_CAP_PROP_WHITE_BALANCE_RED_V, redB );
                 rpicam.set( CV_CAP_PROP_WHITE_BALANCE_BLUE_U, blueB );
                 rpicam.set( CV_CAP_PROP_MODE, 6 );
-                rpicam._impl.setAWB(RASPICAM_AWB_OFF);
                 sleep(1);
 
                 if (!rpicam.open()) {
