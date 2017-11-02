@@ -49,7 +49,7 @@ const bool RESIZE_INPUT = false;
 const bool NO_DARK_SPOTS = false;
 
 //If a<b, return c. Else return a
-#define GREATER_THAN_ELSE(a,b,c) (((a)>(b) && !NO_DARK_SPOTS)?(a):(c))
+#define GREATER_THAN_ELSE(a,b,c) (((a)>(b))?(a):(c))
 
 int squareWidth, squareHeight;
 int startX, startY;
@@ -202,7 +202,7 @@ public:
             for (int l=0; l<maxLeds; l++) {
                 for (c=0;c<3;c++) {
                     color = GREATER_THAN_ELSE(
-                        leds[l][c], LED_MIN_CUTOFF, minColor[c]
+                        leds[l][c], minColor[c], minColor[c]
                     );
                     *(dest+idx) = smooth(color, *(dest+idx));
                     idx ++;
@@ -391,10 +391,19 @@ int processFrame(Mat &frame, LED &leds) {
     }
 
     Vec3b avgColor;
-    for (int c=0; c<3; c++) {
-        avgColor[c] = (unsigned char)GREATER_THAN_ELSE(
-            (colorSum[c] / totalLeds), LED_MIN_CUTOFF, 0
-        );
+    if (NO_DARK_SPOTS) {
+        for (int c=0; c<3; c++) {
+            avgColor[c] = (unsigned char)GREATER_THAN_ELSE(
+                (colorSum[c] / totalLeds), LED_MIN_CUTOFF, 0
+            );
+        }
+    }
+    else {
+        avgColor[0] = LED_MIN_CUTOFF;
+        avgColor[1] = LED_MIN_CUTOFF;
+        avgColor[2] = LED_MIN_CUTOFF;
+    }
+
     }
     bool result = leds.sendLEDs(avgColor);
 
