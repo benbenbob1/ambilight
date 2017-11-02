@@ -200,7 +200,7 @@ public:
             int c, idx = 0;
             unsigned char color;
             for (int l=0; l<maxLeds; l++) {
-                for (c=0;c<3;c++) {
+                for (c=3;c>0;c--) {
                     color = GREATER_THAN_ELSE(
                         leds[l][c], minColor[c], minColor[c]
                     );
@@ -405,7 +405,7 @@ int processFrame(Mat &frame, LED &leds) {
     }
 
     bool result = leds.sendLEDs(avgColor);
-    
+
     if (USE_DISPLAY) {
 
         //Scalar color = Scalar(255, 0, 0); //bgr
