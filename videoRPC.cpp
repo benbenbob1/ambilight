@@ -200,7 +200,7 @@ public:
             int c, idx = 0;
             unsigned char color;
             for (int l=0; l<maxLeds; l++) {
-                for (c=3;c>0;c--) {
+                for (c=2;c<=0;c--) {
                     color = GREATER_THAN_ELSE(
                         leds[l][c], minColor[c], minColor[c]
                     );
