@@ -129,20 +129,17 @@ public:
     {
         int startIdx = (fcOffset*FADECANDY_MAX_LEDSPEROUT)+startIndex;
         int lOffset = 0;
-        if (inverted) {
-            for (int l=0; l<count; l++) {
-                Vec3b color = getLed((count-1)-l);
-                (*allLeds)[startIdx+l][0] = color[0];
-                (*allLeds)[startIdx+l][1] = color[1];
-                (*allLeds)[startIdx+l][2] = color[2];
+        Vec3b color;
+        int idx;
+        for (int l=0; l<count; l++) {
+            idx = l;
+            if (inverted) {
+                idx = (count-1)-l;
             }
-        } else {
-            for (int l=0; l<count; l++) {
-                Vec3b color = getLed(l);
-                (*allLeds)[startIdx+l][0] = color[0];
-                (*allLeds)[startIdx+l][1] = color[1];
-                (*allLeds)[startIdx+l][2] = color[2];
-            }
+            color = getLed(idx);
+            (*allLeds)[startIdx+l][0] = color[0];
+            (*allLeds)[startIdx+l][1] = color[1];
+            (*allLeds)[startIdx+l][2] = color[2];
         }
 
         return count;
@@ -185,9 +182,9 @@ public:
         if (ledsConnected()) {
             uint8_t *dest = OPCClient::Header::view(frameBuffer).data();
             for (int l=0; l<maxLeds; l++) {
-                *(dest++) = leds[l][2];
-                *(dest++) = leds[l][1];
-                *(dest++) = leds[l][0];
+                *(dest++) = GREATER_THAN_ELSE(leds[l][2], LED_MIN_CUTOFF, minColor[2]);
+                *(dest++) = GREATER_THAN_ELSE(leds[l][1], LED_MIN_CUTOFF, minColor[1]);
+                *(dest++) = GREATER_THAN_ELSE(leds[l][0], LED_MIN_CUTOFF, minColor[0]);
             }
             return opc.write(frameBuffer);
         }
@@ -373,7 +370,7 @@ int processFrame(Mat &frame, LED &leds) {
 
     Vec3b avgColor;
     for (int c=0; c<3; c++) {
-        avgColor[c] = (unsigned char)(colorSum[c] / totalLeds);
+        avgColor[c] = (unsigned char)GREATER_THAN_ELSE((colorSum[c] / totalLeds), LED_MIN_CUTOFF, 0);
     }
     bool result = leds.sendLEDs(avgColor);
 
