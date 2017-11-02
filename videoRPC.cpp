@@ -81,6 +81,19 @@ int redB = 0, blueB = 100;
     }
 #endif
 
+int smooth(int in, int prevValue) {
+    int out;
+    int diff = in - prevValue;
+
+    if (diff > SMOOTH_IGNORE_AMT || diff < -SMOOTH_IGNORE_AMT) {
+        out = in;
+    } else {
+        out = in + ((diff > 0 ? diff : -diff)/SMOOTH_SPEED);
+    }
+
+    return out;
+}
+
 class LEDStrip {
 public:
     int fcOffset;
@@ -225,17 +238,6 @@ private:
     std::vector<uint8_t> frameBuffer;
     int maxLedBufferSize;
 };
-
-int smooth(int in, int prevValue) {
-    int out;
-    int diff = in - prevValue;
-
-    if (diff > SMOOTH_IGNORE_AMT || diff < -SMOOTH_IGNORE_AMT) {
-        out = in;
-    } else {
-        out = in + ((diff > 0 ? diff : -diff))/smooth);
-    }
-}
 
 void getAvgColorForFrame(Mat &frame,
     Point topLeftPoint, Point bottomRightPoint,
