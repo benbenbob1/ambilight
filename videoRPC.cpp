@@ -237,7 +237,7 @@ public:
 
         for (int c=0; c<numColors; c++) {
             putColorToBuffer(dest, length, sequence[c]);
-            usleep(50000);
+            usleep(1000000);
             opc.write(frameBuffer);
         }
     }
