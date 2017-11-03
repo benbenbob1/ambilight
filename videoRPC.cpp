@@ -214,6 +214,34 @@ public:
         return false;
     }
 
+    void putColorToBuffer(uint8_t *dest, int length, Vec3b color) {
+        for (int c=0; c<length; c+=3) {
+            *(dest+c)   = color[0];
+            *(dest+c+1) = color[1];
+            *(dest+c+2) = color[2];
+        }
+    }
+
+    void initSequence(vector<uint8_t> frameBuffer, int length) {
+        if (!ledsConnected() || opc == NULL) {
+            return;
+        }
+        uint8_t *dest = OPCClient::Header::view(frameBuffer).data();
+        int numColors = 4;
+        Vec3b sequence[numColors] = {
+            Vec3b(255, 0, 0), // red
+            Vec3b(0, 255, 0), // green
+            Vec3b(0, 0, 255), // blue
+            Vec3b(0, 0, 0)    // off
+        };
+
+        for (int c=0; c<numColors; c++) {
+            putColorToBuffer(dest, length, sequence[c]);
+            usleep(50000);
+            opc.write(frameBuffer);
+        }
+    }
+
     bool initialize() {
         maxLeds = FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT;
         maxLedBufferSize = maxLeds * 3;
@@ -225,22 +253,25 @@ public:
             0, opc.SET_PIXEL_COLORS, maxLedBufferSize
         );
 
-        uint8_t *dest = OPCClient::Header::view(frameBuffer).data();
-        for (int l=0; l<maxLedBufferSize; l++) {
-            *(dest++) = 0;
-        }
-
         bool resolve = opc.resolve(OPC_SOCKET_HOST, OPC_SOCKET_PORT);
 
         if (resolve) {
-            return opc.tryConnect();
+            bool connection = opc.tryConnect();
+            if (connection) {
+                if (fork() == 0) {
+                    //Child process in here
+                    initSequence(frameBuffer, maxLedBufferSize);
+                }
+                return true;
+            }
+            return false;
         }
         return false;
     }
 
 private:
     Vec3b leds[FADECANDY_NUM_STRIPS*FADECANDY_MAX_LEDSPEROUT];
-    std::vector<uint8_t> frameBuffer;
+    vector<uint8_t> frameBuffer;
     int maxLedBufferSize;
 };
 
