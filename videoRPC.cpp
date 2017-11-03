@@ -223,12 +223,12 @@ public:
     }
 
     void initSequence(vector<uint8_t> frameBuffer, int length) {
-        if (!ledsConnected() || opc == NULL) {
+        if (!ledsConnected()) {
             return;
         }
         uint8_t *dest = OPCClient::Header::view(frameBuffer).data();
         int numColors = 4;
-        Vec3b sequence[numColors] = {
+        Vec3b sequence[] = {
             Vec3b(255, 0, 0), // red
             Vec3b(0, 255, 0), // green
             Vec3b(0, 0, 255), // blue
