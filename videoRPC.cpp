@@ -237,8 +237,9 @@ public:
 
         for (int c=0; c<numColors; c++) {
             putColorToBuffer(dest, length, sequence[c]);
-            usleep(1000000);
             opc.write(frameBuffer);
+            opc.write(frameBuffer); //Remove auto dithering by writing twice
+            usleep(100000);
         }
     }
 
@@ -258,10 +259,7 @@ public:
         if (resolve) {
             bool connection = opc.tryConnect();
             if (connection) {
-                if (fork() == 0) {
-                    //Child process in here
-                    initSequence(frameBuffer, maxLedBufferSize);
-                }
+                initSequence(frameBuffer, maxLedBufferSize);
                 return true;
             }
             return false;
@@ -529,7 +527,6 @@ int main(int argc, char **argv) {
                 rpicam.set( CV_CAP_PROP_WHITE_BALANCE_RED_V, redB );
                 rpicam.set( CV_CAP_PROP_WHITE_BALANCE_BLUE_U, blueB );
                 rpicam.set( CV_CAP_PROP_MODE, 6 );
-                sleep(1);
 
                 if (!rpicam.open()) {
                     printf("RaspiCam could not be opened\n");
