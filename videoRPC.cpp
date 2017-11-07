@@ -85,12 +85,11 @@ int smooth(int in, int prevValue) {
     int out;
     int diff = in - prevValue;
 
-    if (diff > SMOOTH_IGNORE_AMT || diff < -SMOOTH_IGNORE_AMT) {
+    if (diff > SMOOTH_IGNORE_AMT || diff < -SMOOTH_IGNORE_AMT || abs(diff) < SMOOTH_SPEED) {
         out = in;
     } else {
-        out = in + ((diff > 0 ? diff : -diff)/SMOOTH_SPEED);
+        out = (int)(prevValue + (double)(diff/SMOOTH_SPEED));
     }
-
     return out;
 }
 
