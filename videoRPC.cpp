@@ -204,7 +204,8 @@ public:
                     color = GREATER_THAN_ELSE(
                         leds[l][c], minColor[c], minColor[c]
                     );
-                    *(dest+idx) = smooth(color, *(dest+idx));
+                    *(dest+idx) = color;
+                    //*(dest+idx) = smooth(color, *(dest+idx));
                     idx ++;
                 }
             }
@@ -239,7 +240,7 @@ public:
             putColorToBuffer(dest, length, sequence[c]);
             opc.write(frameBuffer);
             opc.write(frameBuffer); //Remove auto dithering by writing twice
-            usleep(100000);
+            usleep(800000);
         }
     }
 
