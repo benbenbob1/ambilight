@@ -238,7 +238,7 @@ public:
 
         for (int c=0; c<numColors; c++) {
             putColorToBuffer(dest, length, sequence[c]);
-            rite(frameBuffer);
+            opc.write(frameBuffer);
             opc.write(frameBuffer); //Remove auto dithering by writing twice
             usleep(400000);
         }
