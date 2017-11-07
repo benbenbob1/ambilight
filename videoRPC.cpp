@@ -204,8 +204,7 @@ public:
                     color = GREATER_THAN_ELSE(
                         leds[l][c], minColor[c], minColor[c]
                     );
-                    *(dest+idx) = color;
-                    //*(dest+idx) = smooth(color, *(dest+idx));
+                    *(dest+idx) = smooth(color, *(dest+idx));
                     idx ++;
                 }
             }
