@@ -6,7 +6,7 @@ CDIR=$(pwd); echo "Currently in $CDIR"
 if [ -f rpcVideo ]
 then
     echo "Running..."
-    sudo ./rpcVideo &
+    sudo ./rpcVideo > /var/log/rpcVideo.log
 else
     echo "rpvVideo not found. Exiting..."
     exit

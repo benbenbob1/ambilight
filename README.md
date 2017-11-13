@@ -33,7 +33,8 @@ Run `pip install -r requirements.txt` to install the rest of the python requirem
 
 `cd build`
 
-`cmake -D CMAKE_BUILD_TYPE=RELEASE \
+```
+cmake -D CMAKE_BUILD_TYPE=RELEASE \
 
 	-D CMAKE_INSTALL_PREFIX=/usr/local \
 
@@ -59,7 +60,8 @@ Run `pip install -r requirements.txt` to install the rest of the python requirem
 
 	-D WITH_LIBV4L=ON \
 
-        ../`
+        ../
+```
 
 `sudo make` This will take a long time (~2hrs)
 
@@ -73,7 +75,7 @@ Run `pip install -r requirements.txt` to install the rest of the python requirem
 #### Get application to run on startup
 In order to get the C++ application (rpcVideo) to run on startup, we must add the startup script to the lxsession boot sequence:
 
-`sudo nano /etc/xdg/lxsession/LXDE/autostart`
+`sudo nano ~/.config/lxsession/LXDE-pi/autostart`
 
 Add the following line to the end of the file:
 
