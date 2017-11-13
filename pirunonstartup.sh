@@ -6,6 +6,8 @@ echo "Startup up pirunonstartup script" >> /var/log/rpcVideo.log
 CDIR=$(pwd); echo "Currently in $CDIR" >> /var/log/rpcVideo.log
 if [ -f rpcVideo ]
 then
+    echo "Building..."  >> /var/log/rpcVideo.log
+    sh pibuild.sh
     echo "Running rpcVideo..." >> /var/log/rpcVideo.log
     sudo ./rpcVideo >> /var/log/rpcVideo.log
 else
