@@ -3,4 +3,5 @@
 DIR="/home/pi/ambilight"
 
 sh $DIR/pibuild.sh
-sh $DIR/rpcVideo
+ln $DIR/rpcVideo /usr/bin/rpcBuildAndRun
+sudo sh /usr/bin/rpcBuildAndRun
