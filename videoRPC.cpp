@@ -489,6 +489,8 @@ void setupEnvironment() {
 
     if (USE_DISPLAY) {
         namedWindow("feed");
+    } else {
+        printf("Running headless");
     }
 }
 
