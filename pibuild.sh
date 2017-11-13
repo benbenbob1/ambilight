@@ -9,6 +9,7 @@ elif [ "$1" = "-ng" ]
 then
     echo "Ignoring git changes"
 else
+    echo "Updating git repository"
     git checkout .
     git pull
 fi
