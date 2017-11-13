@@ -32,7 +32,7 @@ const int VIDEO_FEED_HEIGHT = 240; //pixels
 const int NUM_LEDS_HORIZ = 52;
 const int NUM_LEDS_VERT  = 28;
 const int BLUR_AMT = 25; // Must be an odd number
-const int SMOOTH_SPEED = 5; // Number of frames to fade colors over
+const int SMOOTH_SPEED = 2; // Number of frames to fade colors over
 // Don't smooth is color difference is over this
 const int SMOOTH_IGNORE_AMT = 50;
 // Amount to go "inwards" multiplied by current rectangle width or height
@@ -88,7 +88,7 @@ int smooth(int in, int prevValue) {
     if (diff > SMOOTH_IGNORE_AMT || diff < -SMOOTH_IGNORE_AMT || abs(diff) < SMOOTH_SPEED) {
         out = in;
     } else {
-        out = (int)(prevValue + (double)(diff/SMOOTH_SPEED));
+        out = (int)((double)(prevValue + in)/2.0);
     }
     return out;
 }
