@@ -53,13 +53,9 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
 	-D INSTALL_C_EXAMPLES=ON \
 
 	-D INSTALL_PYTHON_EXAMPLES=ON \
-
 	-D OPENCV_EXTRA_MODULES_PATH=../opencv_contrib/modules \
-
 	-D ENABLE_NEON=ON \
-
 	-D WITH_LIBV4L=ON \
-
         ../
 ```
 
@@ -77,6 +73,8 @@ In order to get the C++ application (rpcVideo) to run on startup, we must add th
 
 `sudo nano ~/.config/lxsession/LXDE-pi/autostart`
 
-Add the following line to the end of the file:
+Add the following line to the file before the `@xscreensaver` line:
 
-`@/bin/sh /home/pi/ambilight/pirunonstartup.sh`
+`sudo /bin/sh /home/pi/ambilight/pirunonstartup.sh`
+
+
